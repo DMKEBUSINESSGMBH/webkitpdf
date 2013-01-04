@@ -1,16 +1,16 @@
 # TYPO3 Extension "webkitpdf"
 Generate PDF files using WebKit rendering engine.
 
-## Version 1.1.5
+## Version 1.2.0
 
 
 
 
 <table>
-	<tr><td>Version</td><td>1.1.5 beta</td></tr>
-	<tr><td>Release date</td><td>25. May 2010</td></tr>
+	<tr><td>Version</td><td>1.2.0 beta</td></tr>
+	<tr><td>Release date</td><td>26. February 2012</td></tr>
 	<tr><td>Author</td><td>Dev-Team Typoheads</td></tr>
-	<tr><td>Comment</td><td>Every TS option (except scriptParams) has stdWrap now. Cache works again. More details in changelog.</td></tr>
+	<tr><td>Comment</td><td>Read changelog.txt for details</td></tr>
 </table>
 
 ## !! Attention !!
