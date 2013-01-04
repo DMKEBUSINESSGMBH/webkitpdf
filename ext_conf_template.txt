@@ -1,0 +1,2 @@
+	# cat=basic; type=integer; label=Cache threshold:When clearing cache in backend, cached files older than this value (in minutes) will be deleted.
+cacheThreshold = 10
