@@ -34,6 +34,10 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	var $prefixId = 'tx_webkitpdf_pi1';
 	var $scriptRelPath = 'pi1/class.tx_webkitpdf_pi1.php';	
 	var $extKey = 'webkitpdf';	
+
+	// Disbale caching: Don't check cHash, because the plugin is a USER_INT object
+	public $pi_checkCHash = FALSE;
+	public $pi_USER_INT_obj = 1;
 	
 	protected $cacheManager;
 	protected $scriptPath;
@@ -105,8 +109,23 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 
 		$urls = $this->piVars[$this->paramName];
 		if(!$urls) {
-			$urls = $this->conf['urls.'];
+			$urls = array();
+			// Allow string/stdWrap in urls
+			// We need to do some ugly checks for backward compatibility
+			$urlsArr = $this->conf['urls.'];
+			foreach ($urlsArr as $key => $value) {
+				$lastChar = substr($key, strlen($key) - 1);
+				if ($lastChar === '.' && is_array($value)) {
+					$key = substr($key, 0, -1);
+					$str = $urls[$key];
+					$urls[$key] = trim($this->cObj->stdWrap($str, $value));
+					unset($urlsArr[$key]);
+				} else {
+					$urls[$key] = $value;
+				}
+			}
 		}
+
 		$content = '';
 		if(!empty($urls)) {
 			if(count($urls) > 0) {
@@ -114,7 +133,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 				$origUrls = implode(' ', $urls);
 				
 				foreach($urls as &$url) {
-					$url = '"' . $url . '"';
+					$url = $this->wrapUriName($url);
 				}
 				
 				// not in cache. generate PDF file
@@ -123,12 +142,14 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 					$scriptCall = 	$this->scriptPath. 'wkhtmltopdf ' .
 									$this->buildScriptOptions() . ' ' .
 									implode(' ', $urls) . ' ' .
-									$this->filename;
+									$this->filename .
+									' 2>&1';
 					
-					if($this->conf['debugScriptCall'] === '1') {
-						print $scriptCall;
-					}
-					exec($scriptCall);
+					$output = shell_exec($scriptCall);
+
+					// Write debugging information to devLog
+					$this->debugLogging('Executed shell command', -1, array($scriptCall));
+					$this->debugLogging('Output of shell command', -1, array($output));
 					
 					$this->cacheManager->store($origUrls, $this->filename);
 					
@@ -158,8 +179,8 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	protected function readScriptSettings() {
 		$defaultSettings = array(
 			'footer-right' => '[page]/[toPage]',
-			'footer-font-size' => '6pt',
-			'header-font-size' => '6pt',
+			'footer-font-size' => '6',
+			'header-font-size' => '6',
 			'margin-left' => '15mm',
 			'margin-right' => '15mm',
 			'margin-top' => '15mm',
@@ -210,6 +231,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		
 		$paramString = '';
 		foreach($options as $param => $value) {
+			$value = (strlen($value) > 0) ? '"' . $value . '"' : '';
 			$paramsString .= ' ' . $param . ' ' . $value; 
 		}
 		return $paramsString;
@@ -236,6 +258,32 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		return $path;
 	}
 
+	/**
+	 * Writes log messages to devLog
+	 *
+	 * Acts as a wrapper for t3lib_div::devLog()
+	 * Additionally checks if debug was activated
+	 *
+	 * @param	string		$title: title of the event
+	 * @param	string		$severity: severity of the debug event
+	 * @param	array		$dataVar: additional data
+	 * @return	void
+	 */
+	protected function debugLogging($title, $severity = -1, $dataVar = array()) {
+		if ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['webkitpdf']['debug'] === 1) {
+			t3lib_div::devlog($title, $this->extKey, $severity, $dataVar);
+		}
+	}
+	
+	/**
+	 * Escapes a URI resource name so it can safely be used on the command line.
+	 *
+	 * @param   string  $inputName URI resource name to safeguard, must not be empty
+	 * @return  string  $inputName escaped as needed
+	 */
+	protected function wrapUriName($inputName) {
+		return escapeshellarg($inputName);
+	}
 }
 
 if (defined('TYPO3_MODE') && $TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']) {
