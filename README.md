@@ -1,16 +1,17 @@
 # TYPO3 Extension "webkitpdf"
 Generate PDF files using WebKit rendering engine.
 
-## Version 1.1.2
+## Version 1.1.3
 ** BE AWARE: This extension has been marked as insecure by the security team! **.
 
 
 
 <table>
-	<tr><td>Version</td><td>1.1.2 beta</td></tr>
-	<tr><td>Release date</td><td>03. November 2009</td></tr>
+	<tr><td>Version</td><td>1.1.3 beta</td></tr>
+	<tr><td>Release date</td><td>16. November 2009</td></tr>
 	<tr><td>Author</td><td>Dev-Team Typoheads</td></tr>
-	<tr><td>Comment</td><td>New TS option to return only the filename of the created PDF. Used in Formhandler to attach PDFs to emails.</td></tr>
+	<tr><td>Comment</td><td>Code cleanup.
+Fixed issue with PDF download occurring in some browsers.</td></tr>
 </table>
 
 ## !! Attention !!

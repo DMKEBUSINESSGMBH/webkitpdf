@@ -141,7 +141,12 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 				if($this->conf['fileOnly'] == 1) {
 					return $this->filename;
 				}
+				
+				$filesize = filesize($this->filename);
+				
 				header('Content-type: application/pdf');
+				header('Content-Transfer-Encoding: Binary');
+				header('Content-Length: ' . $filesize);
 				header('Content-Disposition: attachment; filename="' . $this->filenameOnly . '"');
 				readfile($this->filename);
 			}

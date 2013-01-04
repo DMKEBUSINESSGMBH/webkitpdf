@@ -3,7 +3,7 @@
 /***************************************************************
  * Extension Manager/Repository config file for ext "webkitpdf".
  *
- * Auto generated 04-01-2013 14:13
+ * Auto generated 04-01-2013 14:14
  *
  * Manual updates:
  * Only the data in the array - everything else is removed by next
@@ -15,7 +15,7 @@ $EM_CONF[$_EXTKEY] = array (
 	'description' => 'Generate PDF files using WebKit rendering engine.',
 	'category' => 'plugin',
 	'shy' => 0,
-	'version' => '1.1.2',
+	'version' => '1.1.3',
 	'dependencies' => '',
 	'conflicts' => '',
 	'priority' => '',
