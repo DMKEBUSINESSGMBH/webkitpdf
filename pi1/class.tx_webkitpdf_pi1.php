@@ -28,7 +28,8 @@
  */
 
 require_once(PATH_tslib . 'class.tslib_pibase.php');
-require_once(t3lib_extMgm::extPath('webkitpdf') . '/res/class.tx_webkitpdf_cache.php');
+require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_cache.php');
+require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_utils.php');
 
 class tx_webkitpdf_pi1 extends tslib_pibase {
 	var $prefixId = 'tx_webkitpdf_pi1';
@@ -53,7 +54,12 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	 * @return	void
 	 */
 	protected function init($conf) {
-		$this->conf = $conf;
+		
+		// Process stdWrap properties
+		$temp = $conf['scriptParams.'];
+		$this->conf = $this->processStdWraps($conf);
+		$this->conf['scriptParams.'] = $temp;
+		
 		$this->pi_setPiVarDefaults();
 		
 		$this->scriptPath = t3lib_extMgm::extPath('webkitpdf') . 'res/';
@@ -62,7 +68,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		}
 		$this->outputPath = t3lib_div::getIndpEnv('TYPO3_DOCUMENT_ROOT');
 		if($this->conf['customTempOutputPath']) {
-			$this->outputPath .= $this->sanitizePath($this->conf['customTempOutputPath']);
+			$this->outputPath .= tx_webkitpdf_utils::sanitizePath($this->conf['customTempOutputPath']);
 		} else {
 			$this->outputPath .= '/typo3temp/tx_webkitpdf/';
 		}
@@ -72,11 +78,9 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 			$this->paramName = $this->conf['customParameterName'];
 		}
 		
-		$this->filename = $this->outputPath . $this->conf['filePrefix'] . $this->generateHash() . '.pdf';		
+		$this->filename = $this->outputPath . $this->conf['filePrefix'] . tx_webkitpdf_utils::generateHash() . '.pdf';		
 		$this->filenameOnly = basename($this->filename);
-		if($this->conf['staticFileName'] && $this->conf['staticFileName.']) {
-			$this->filenameOnly = $this->cObj->cObjGetSingle($this->conf['staticFileName'], $this->conf['staticFileName.']);
-		} elseif($this->conf['staticFileName']) {
+		if($this->conf['staticFileName']) {
 			$this->filenameOnly = $this->conf['staticFileName'];
 		}
 			
@@ -86,15 +90,6 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		
 		$this->readScriptSettings();
 		$this->cacheManager = t3lib_div::makeInstance('tx_webkitpdf_cache');
-	}
-	
-	protected function generateHash(){
-		$result = '';
-		$charPool = '0123456789abcdefghijklmnopqrstuvwxyz';
-		for($p = 0; $p < 15; $p++) {
-			$result .= $charPool[mt_rand(0, strlen($charPool) - 1)];
-		}
-		return sha1(md5(sha1($result)));
 	}
 
 	/**
@@ -109,21 +104,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 
 		$urls = $this->piVars[$this->paramName];
 		if(!$urls) {
-			$urls = array();
-			// Allow string/stdWrap in urls
-			// We need to do some ugly checks for backward compatibility
-			$urlsArr = $this->conf['urls.'];
-			foreach ($urlsArr as $key => $value) {
-				$lastChar = substr($key, strlen($key) - 1);
-				if ($lastChar === '.' && is_array($value)) {
-					$key = substr($key, 0, -1);
-					$str = $urls[$key];
-					$urls[$key] = trim($this->cObj->stdWrap($str, $value));
-					unset($urlsArr[$key]);
-				} else {
-					$urls[$key] = $value;
-				}
-			}
+			$urls = $this->conf['urls.'];
 		}
 
 		$content = '';
@@ -133,7 +114,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 				$origUrls = implode(' ', $urls);
 				
 				foreach($urls as &$url) {
-					$url = $this->wrapUriName($url);
+					$url = tx_webkitpdf_utils::sanitizeURL($url);
 				}
 				
 				// not in cache. generate PDF file
@@ -148,8 +129,8 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 					$output = shell_exec($scriptCall);
 
 					// Write debugging information to devLog
-					$this->debugLogging('Executed shell command', -1, array($scriptCall));
-					$this->debugLogging('Output of shell command', -1, array($output));
+					tx_webkitpdf_utils::debugLogging('Executed shell command', -1, array($scriptCall));
+					tx_webkitpdf_utils::debugLogging('Output of shell command', -1, array($output));
 					
 					$this->cacheManager->store($origUrls, $this->filename);
 					
@@ -257,33 +238,36 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		
 		return $path;
 	}
-
-	/**
-	 * Writes log messages to devLog
-	 *
-	 * Acts as a wrapper for t3lib_div::devLog()
-	 * Additionally checks if debug was activated
-	 *
-	 * @param	string		$title: title of the event
-	 * @param	string		$severity: severity of the debug event
-	 * @param	array		$dataVar: additional data
-	 * @return	void
-	 */
-	protected function debugLogging($title, $severity = -1, $dataVar = array()) {
-		if ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['webkitpdf']['debug'] === 1) {
-			t3lib_div::devlog($title, $this->extKey, $severity, $dataVar);
-		}
-	}
 	
 	/**
-	 * Escapes a URI resource name so it can safely be used on the command line.
+	 * Processes the stdWrap properties of the input array
 	 *
-	 * @param   string  $inputName URI resource name to safeguard, must not be empty
-	 * @return  string  $inputName escaped as needed
+	 * @param	array	The TypoScript array
+	 * @return	array	The processed values
 	 */
-	protected function wrapUriName($inputName) {
-		return escapeshellarg($inputName);
+	protected function processStdWraps($tsSettings) {
+		
+		// Get TS values and process stdWrap properties
+		foreach ($tsSettings as $key => $value) {
+			$process = TRUE;			
+			if (substr($key, -1) === '.') {
+				$key = substr($key, 0, -1);
+				if (array_key_exists($key, $tsSettings)) {
+					$process = FALSE;
+				}
+			}
+			if ($process) {
+				$tsSettings[$key] = $this->cObj->stdWrap($value, $tsSettings[$key . '.']);
+
+				// Remove the additional TS properties after processing, otherwise they'll be translated to pdf properties
+				if (isset($tsSettings[$key . '.'])) {
+					unset($tsSettings[$key . '.']);
+				}
+			}
+		}
+		return $tsSettings;
 	}
+	
 }
 
 if (defined('TYPO3_MODE') && $TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']) {
