@@ -27,7 +27,8 @@
  * @author Reinhard Führicht <rf@typoheads.at>
  */
 
-require_once(PATH_tslib . 'class.tslib_pibase.php');
+// Fix for 6.2
+// require_once(PATH_tslib . 'class.tslib_pibase.php');
 require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_cache.php');
 require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_utils.php');
 
