@@ -15,7 +15,7 @@ $EM_CONF[$_EXTKEY] = array (
 	'description' => 'Generate PDF files using WebKit rendering engine.',
 	'category' => 'plugin',
 	'shy' => 0,
-	'version' => '1.2.0',
+	'version' => '1.3.0',
 	'dependencies' => '',
 	'conflicts' => '',
 	'priority' => '',
@@ -32,15 +32,15 @@ $EM_CONF[$_EXTKEY] = array (
 	'author_company' => 'Typoheads GmbH',
 	'CGLcompliance' => NULL,
 	'CGLcompliance_note' => NULL,
-	'constraints' => 
+	'constraints' =>
 	array (
-		'depends' => 
+		'depends' =>
 		array (
 		),
-		'conflicts' => 
+		'conflicts' =>
 		array (
 		),
-		'suggests' => 
+		'suggests' =>
 		array (
 		),
 	),
