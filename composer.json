@@ -1,7 +1,7 @@
 {
-	"name" : "dmk/webkitpdf",
+	"name" : "typo3-ter/webkitpdf",
 	"description" : "",
-	"version" : "1.3.0",
+	"version" : "1.3.1",
 	"type" : "typo3-cms-extension",
 	"keywords" : ["TYPO3 CMS"],
 	"license" : "proprietary",
