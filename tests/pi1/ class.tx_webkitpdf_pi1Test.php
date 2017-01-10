@@ -36,6 +36,19 @@ tx_rnbase::load('tx_webkitpdf_pi1');
 class tx_webkitpdf_pi1Test extends tx_rnbase_tests_BaseTestCase {
 
 	/**
+	 * {@inheritDoc}
+	 * @see PHPUnit_Framework_TestCase::tearDown()
+	 */
+	protected function tearDown() {
+		if (isset($_COOKIE['test1'])) {
+			unset($_COOKIE['test1']);
+		}
+		if (isset($_COOKIE['test2'])) {
+			unset($_COOKIE['test2']);
+		}
+	}
+
+	/**
 	 * @group unit
 	 */
 	public function testInitCallsInitDosAttackPrevention() {
@@ -83,6 +96,22 @@ class tx_webkitpdf_pi1Test extends tx_rnbase_tests_BaseTestCase {
 		$this->callInaccessibleMethod($plugin, 'initDosAttackPrevention');
 
 		self::assertEquals(array('urls' => array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl')), $plugin->piVars);
+	}
+
+	/**
+	 * @group unit
+	 */
+	public function testBuildScriptOptionsAddsCookies() {
+		$_COOKIE['test1'] = 'value1';
+		$_COOKIE['test2'] = 'value2';
+
+		$plugin = tx_rnbase::makeInstance($this->buildAccessibleProxy('tx_webkitpdf_pi1'));
+		$this->callInaccessibleMethod($plugin, 'buildScriptOptions');
+
+		self::assertContains(
+			' --cookie "test1" "value1" --cookie "test2" "value2"',
+			$this->callInaccessibleMethod($plugin, 'buildScriptOptions')
+		);
 	}
 }
 

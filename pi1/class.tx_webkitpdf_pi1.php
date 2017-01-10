@@ -276,6 +276,11 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 			}
 			$paramsString .= ' ' . $param . ' ' . $value;
 		}
+
+		foreach ($_COOKIE as $cookieName => $cookieValue) {
+			$paramsString .= ' --cookie "' . $cookieName . '" "' . $cookieValue . '"';
+		}
+
 		return $paramsString;
 	}
 
