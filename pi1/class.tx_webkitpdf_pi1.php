@@ -34,8 +34,8 @@ require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_utils.
 
 class tx_webkitpdf_pi1 extends tslib_pibase {
 	var $prefixId = 'tx_webkitpdf_pi1';
-	var $scriptRelPath = 'pi1/class.tx_webkitpdf_pi1.php';	
-	var $extKey = 'webkitpdf';	
+	var $scriptRelPath = 'pi1/class.tx_webkitpdf_pi1.php';
+	var $extKey = 'webkitpdf';
 
 	// Disable caching: Don't check cHash, because the plugin is a USER_INT object
 	public $pi_checkCHash = FALSE;
@@ -56,7 +56,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	 * @return	void
 	 */
 	protected function init($conf) {
-		
+
 		// Process stdWrap properties
 		$temp = $conf['scriptParams.'];
 		unset($conf['scriptParams.']);
@@ -83,7 +83,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 			$this->paramName = $this->conf['customParameterName'];
 		}
 
-		$this->filename = $this->outputPath . $this->conf['filePrefix'] . tx_webkitpdf_utils::generateHash() . '.pdf';		
+		$this->filename = $this->outputPath . $this->conf['filePrefix'] . tx_webkitpdf_utils::generateHash() . '.pdf';
 		$this->filenameOnly = basename($this->filename);
 		if($this->conf['staticFileName']) {
 			$this->filenameOnly = $this->conf['staticFileName'];
@@ -100,6 +100,32 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		if(intval($this->conf['openFilesInline']) === 1) {
 			$this->contentDisposition = 'inline';
 		}
+
+		$this->initDosAttackPrevention();
+	}
+
+	/**
+	 * Wenn wir unbegrenzt viele URLs zu lassen, dann besteht die Gefahr
+	 * dass der Server auf sich selbst eine DoS Attacke ausführt, indem eine
+	 * große Anzahl von URLs übergeben wird.
+	 *
+	 * @return void
+	 */
+	protected function initDosAttackPrevention() {
+		if ($this->conf['numberOfUrlsAllowedToProcess']) {
+			$this->makeSureNotMoreUrlsAreProcessedThanAllowed();
+		}
+	}
+
+	/**
+	 * @return void
+	 */
+	protected function makeSureNotMoreUrlsAreProcessedThanAllowed() {
+		$this->piVars[$this->paramName] = array_slice(
+			$this->piVars[$this->paramName],
+			0,
+			intval($this->conf['numberOfUrlsAllowedToProcess'])
+		);
 	}
 
 	/**
@@ -124,54 +150,54 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		$content = '';
 		if(!empty($urls)) {
 			if(count($urls) > 0) {
-				
+
 				$origUrls = implode(' ', $urls);
 				$loadFromCache = TRUE;
-				
+
 				$allowedHosts = FALSE;
 				if($this->conf['allowedHosts']) {
 					$allowedHosts = t3lib_div::trimExplode(',', $this->conf['allowedHosts']);
 				}
-				
+
 				foreach($urls as &$url) {
 					if($GLOBALS['TSFE']->loginUser) {
-						
+
 						// Do not cache access restricted pages
 						$loadFromCache = FALSE;
 						$url = tx_webkitpdf_utils::appendFESessionInfoToURL($url);
 					}
 					$url = tx_webkitpdf_utils::sanitizeURL($url, $allowedHosts);
 				}
-				
+
 				// not in cache. generate PDF file
 				if(!$this->cacheManager->isInCache($origUrls) || $this->conf['debugScriptCall'] === '1' || !$loadFromCache) {
-					
+
 					$scriptCall = 	$this->scriptPath. 'wkhtmltopdf ' .
 									$this->buildScriptOptions() . ' ' .
 									implode(' ', $urls) . ' ' .
 									$this->filename .
 									' 2>&1';
-					
+
 					exec($scriptCall, $output);
 
 					// Write debugging information to devLog
 					tx_webkitpdf_utils::debugLogging('Executed shell command', -1, array($scriptCall));
 					tx_webkitpdf_utils::debugLogging('Output of shell command', -1, $output);
-					
+
 					$this->cacheManager->store($origUrls, $this->filename);
-					
+
 				} else {
-					
+
 					//read filepath from cache
 					$this->filename = $this->cacheManager->get($origUrls);
 				}
-				
+
 				if($this->conf['fileOnly'] == 1) {
 					return $this->filename;
 				}
-				
+
 				$filesize = filesize($this->filename);
-				
+
 				header('Content-type: application/pdf');
 				header('Content-Transfer-Encoding: Binary');
 				header('Content-Length: ' . $filesize);
@@ -185,10 +211,10 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 				exit(0);
 			}
 		}
-		
+
 		return $this->pi_wrapInBaseClass($content);
 	}
-	
+
 	protected function readScriptSettings() {
 		$defaultSettings = array(
 			'footer-right' => '[page]/[toPage]',
@@ -199,7 +225,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 			'margin-top' => '15mm',
 			'margin-bottom' => '15mm',
 		);
-		
+
 		$scriptParams = array();
 		$tsSettings = $this->conf['scriptParams'];
 		foreach($defaultSettings as $param => $value) {
@@ -207,7 +233,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 				$tsSettings[$param] = $value;
 			}
 		}
-		
+
 		$finalSettings = array();
 		foreach($tsSettings as $param => $value) {
 			$value = trim($value);
@@ -229,26 +255,26 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		if($this->conf['pageURLInHeader']) {
 			$options['--header-center'] = '[webpage]';
 		}
-		
+
 		if($this->conf['copyrightNotice']) {
 			$options['--footer-left'] = '© ' . date('Y', time()) . $this->conf['copyrightNotice'] . '';
 		}
-		
+
 		if($this->conf['additionalStylesheet']) {
 			$this->conf['additionalStylesheet'] = $this->sanitizePath($this->conf['additionalStylesheet'], FALSE);
 			$options['--user-style-sheet'] = t3lib_div::getIndpEnv('TYPO3_REQUEST_HOST') . $this->conf['additionalStylesheet'];
-				
+
 		}
 
 		$userSettings = $this->readScriptSettings();
 		$options = array_merge($options, $userSettings);
-		
+
 		$paramString = '';
 		foreach($options as $param => $value) {
 			if(strlen($value) > 0) {
 				$value = '"' . $value . '"';
 			}
-			$paramsString .= ' ' . $param . ' ' . $value; 
+			$paramsString .= ' ' . $param . ' ' . $value;
 		}
 		return $paramsString;
 	}
@@ -260,20 +286,20 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	 * @return	Sanitized path
 	 */
 	protected function sanitizePath($path, $trailingSlash = TRUE) {
-		
+
 		// slash as last character
 		if($trailingSlash && substr($path, (strlen($path) - 1)) !== '/') {
 			$path .= '/';
 		}
-		
+
 		//slash as first character
 		if(substr($path, 0, 1) !== '/') {
 			$path = '/' . $path;
 		}
-		
+
 		return $path;
 	}
-	
+
 	/**
 	 * Processes the stdWrap properties of the input array
 	 *
@@ -281,23 +307,23 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	 * @return	array	The processed values
 	 */
 	protected function processStdWraps($tsSettings) {
-		
+
 		// Get TS values and process stdWrap properties
 		if(is_array($tsSettings)) {
 			foreach ($tsSettings as $key => $value) {
-				$process = TRUE;			
+				$process = TRUE;
 				if (substr($key, -1) === '.') {
 					$key = substr($key, 0, -1);
 					if (array_key_exists($key, $tsSettings)) {
 						$process = FALSE;
 					}
 				}
-				
+
 				if ((substr($key, -1) === '.' && !array_key_exists(substr($key, 0, -1), $tsSettings)) ||
 					(substr($key, -1) !== '.' && array_key_exists($key . '.', $tsSettings)) && !strstr($key, 'scriptParams')) {
-					
+
 					$tsSettings[$key] = $this->cObj->stdWrap($value, $tsSettings[$key . '.']);
-	
+
 					// Remove the additional TS properties after processing, otherwise they'll be translated to pdf properties
 					if (isset($tsSettings[$key . '.'])) {
 						unset($tsSettings[$key . '.']);
@@ -307,7 +333,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		}
 		return $tsSettings;
 	}
-	
+
 }
 
 if (defined('TYPO3_MODE') && $TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']) {

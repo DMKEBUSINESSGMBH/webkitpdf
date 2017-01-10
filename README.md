@@ -1,25 +1,4 @@
 # TYPO3 Extension "webkitpdf"
-Generate PDF files using WebKit rendering engine.
+This is a fork of webkitpdf with compatibility to TYPO3 6.2. Furthermore there is rudimentary DoS protection added. With the TYpoScript configuration plugin.tx_webkitpdf_pi1.numberOfUrlsAllowedToProcess the number of URLs per request is limited. By default it's 3. Set it to 0 to allow an unlimited number of URLs. But be aware that a attacker could pass so many URLs that the server breaks down.
 
-## Version 1.2.0
-
-
-
-
-<table>
-	<tr><td>Version</td><td>1.2.0 beta</td></tr>
-	<tr><td>Release date</td><td>26. February 2012</td></tr>
-	<tr><td>Author</td><td>Dev-Team Typoheads</td></tr>
-	<tr><td>Comment</td><td>Read changelog.txt for details</td></tr>
-</table>
-
-## !! Attention !!
-This is an **automatically** generated git version, based on the release into the [TYPO3 Extension Repository](http://www.typo3.org/extensions/).
-You can find the original version at http://typo3.org/extensions/repository/view/webkitpdf/ .
-
-It does not make sense to make pull requests as this repository has been created automatically from 3rd party, not from the original author(s).
-
-Every version of the extension is tagged with the version number, therefore you can switch quite easily between different versions.
-
-
--- never edit the line below (typo3-ter) --
+Original documentation: https://github.com/DMKEBUSINESSGMBH/webkitpdf/blob/master/doc/manual.pdf
