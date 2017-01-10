@@ -5,7 +5,7 @@ class tx_webkitpdf_cache {
 	protected $conf;
 	protected $isEnabled;
 
-	public function __construct($conf) {
+	public function __construct($conf = array()) {
 		$this->conf = $conf;
 		$this->isEnabled = TRUE;
 		$minutes = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['webkitpdf']['cacheThreshold'];
@@ -19,11 +19,11 @@ class tx_webkitpdf_cache {
 
 	public function clearCachePostProc(&$params, &$pObj) {
 		$now = time();
-		
+
 		//cached files older than x minutes.
 		$minutes = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['webkitpdf']['cacheThreshold'];
 		$threshold = $now - $minutes * 60;
-		
+
 		$res = $GLOBALS['TYPO3_DB']->exec_SELECTquery('uid,crdate,filename', 'tx_webkitpdf_cache', 'crdate<' . $threshold);
 		if($res && $GLOBALS['TYPO3_DB']->sql_num_rows($res) > 0) {
 			$filenames = array();
@@ -37,14 +37,14 @@ class tx_webkitpdf_cache {
 					unlink($file);
 				}
 			}
-			
+
 			// Write a message to devlog
 			if ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['webkitpdf']['debug'] === 1) {
 				t3lib_div::devLog('Clearing cached files older than ' . $minutes . ' minutes.', 'webkitpdf', -1);
 			}
 		}
 	}
-	
+
 	public function isInCache($urls) {
 		$found = FALSE;
 		if($this->isEnabled) {
@@ -56,7 +56,7 @@ class tx_webkitpdf_cache {
 		}
 		return $found;
 	}
-	
+
 	public function store($urls, $filename) {
 		if($this->isEnabled) {
 			$insertFields = array(
@@ -67,7 +67,7 @@ class tx_webkitpdf_cache {
 			$GLOBALS['TYPO3_DB']->exec_INSERTquery('tx_webkitpdf_cache', $insertFields);
 		}
 	}
-	
+
 	public function get($urls) {
 		$filename = FALSE;
 		if($this->isEnabled) {
