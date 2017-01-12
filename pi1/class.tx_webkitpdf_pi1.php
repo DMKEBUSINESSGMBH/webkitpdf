@@ -172,10 +172,10 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 				// not in cache. generate PDF file
 				if(!$this->cacheManager->isInCache($origUrls) || $this->conf['debugScriptCall'] === '1' || !$loadFromCache) {
 
-					$scriptCall = 	$this->scriptPath. 'wkhtmltopdf ' .
+					$scriptCall = 	escapeshellcmd($this->scriptPath. 'wkhtmltopdf') . ' ' .
 									$this->buildScriptOptions() . ' ' .
 									implode(' ', $urls) . ' ' .
-									$this->filename .
+									escapeshellarg($this->filename) .
 									' 2>&1';
 
 					exec($scriptCall, $output);
@@ -272,13 +272,13 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		$paramString = '';
 		foreach($options as $param => $value) {
 			if(strlen($value) > 0) {
-				$value = '"' . $value . '"';
+				$value = escapeshellarg($value);
 			}
 			$paramsString .= ' ' . $param . ' ' . $value;
 		}
 
 		foreach ($_COOKIE as $cookieName => $cookieValue) {
-			$paramsString .= ' --cookie "' . $cookieName . '" "' . $cookieValue . '"';
+			$paramsString .= ' --cookie ' . escapeshellarg($cookieName) . ' ' . escapeshellarg($cookieValue);
 		}
 
 		return $paramsString;

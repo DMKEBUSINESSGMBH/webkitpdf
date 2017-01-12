@@ -109,7 +109,7 @@ class tx_webkitpdf_pi1Test extends tx_rnbase_tests_BaseTestCase {
 		$this->callInaccessibleMethod($plugin, 'buildScriptOptions');
 
 		self::assertContains(
-			' --cookie "test1" "value1" --cookie "test2" "value2"',
+			' --cookie \'test1\' \'value1\' --cookie \'test2\' \'value2\'',
 			$this->callInaccessibleMethod($plugin, 'buildScriptOptions')
 		);
 	}
