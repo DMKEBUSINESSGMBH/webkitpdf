@@ -170,7 +170,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 				}
 
 				// not in cache. generate PDF file
-				if(!$this->cacheManager->isInCache($origUrls) || $this->conf['debugScriptCall'] === '1' || !$loadFromCache) {
+				if(!$loadFromCache || !$this->cacheManager->isInCache($origUrls) || $this->conf['debugScriptCall'] === '1') {
 
 					$scriptCall = 	escapeshellcmd($this->scriptPath. 'wkhtmltopdf') . ' ' .
 									$this->buildScriptOptions() . ' ' .
