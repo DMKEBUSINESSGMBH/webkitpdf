@@ -11,15 +11,18 @@ class tx_webkitpdf_utils {
 	static public function wrapUriName($inputName) {
 		return escapeshellarg($inputName);
 	}
-	
+
 	/**
-	 * Checks if the given URL's host matches the current host 
+	 * Checks if the given URL's host matches the current host
 	 * and sanitizes the URL to be used on command line.
 	 *
-	 * @param   string  $url The URL to be sanitized
-	 * @return  string  The sanitized URL
+	 * @param   string $url The URL to be sanitized
+	 * @param   array $allowedHosts
+	 *
+	 * @return string The sanitized URL
+	 * @throws Exception
 	 */
-	static public function sanitizeURL($url) {
+	static public function sanitizeURL($url, $allowedHosts) {
 		
 		//Make sure that host of the URL matches TYPO3 host or one of allowed hosts set in TypoScript.
 		$parts = parse_url($url);
