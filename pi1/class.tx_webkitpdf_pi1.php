@@ -121,11 +121,13 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	 * @return void
 	 */
 	protected function makeSureNotMoreUrlsAreProcessedThanAllowed() {
-		$this->piVars[$this->paramName] = array_slice(
-			$this->piVars[$this->paramName],
-			0,
-			intval($this->conf['numberOfUrlsAllowedToProcess'])
-		);
+		if (is_array($this->piVars[$this->paramName])) {
+			$this->piVars[$this->paramName] = array_slice(
+				$this->piVars[$this->paramName],
+				0,
+				intval($this->conf['numberOfUrlsAllowedToProcess'])
+			);
+		}
 	}
 
 	/**
@@ -269,7 +271,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 		$userSettings = $this->readScriptSettings();
 		$options = array_merge($options, $userSettings);
 
-		$paramString = '';
+		$paramsString = '';
 		foreach($options as $param => $value) {
 			if(strlen($value) > 0) {
 				$value = escapeshellarg($value);
@@ -288,7 +290,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase {
 	 * Makes sure that given path has a slash as first and last character
 	 *
 	 * @param	string		$path: The path to be sanitized
-	 * @return	Sanitized path
+	 * @return	string		sanitized path
 	 */
 	protected function sanitizePath($path, $trailingSlash = TRUE) {
 
