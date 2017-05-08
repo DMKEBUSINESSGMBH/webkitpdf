@@ -11,39 +11,37 @@
  ***************************************************************/
 
 $EM_CONF[$_EXTKEY] = array (
-	'title' => 'Webkit PDFs',
-	'description' => 'Generate PDF files using WebKit rendering engine.',
-	'category' => 'plugin',
-	'shy' => 0,
-	'version' => '1.3.5',
-	'dependencies' => '',
-	'conflicts' => '',
-	'priority' => '',
-	'loadOrder' => '',
-	'module' => '',
-	'state' => 'beta',
-	'uploadfolder' => 0,
-	'createDirs' => 'typo3temp/tx_webkitpdf/',
-	'modify_tables' => '',
-	'clearcacheonload' => 0,
-	'lockType' => '',
-	'author' => 'Dev-Team Typoheads',
-	'author_email' => 'dev@typoheads.at',
-	'author_company' => 'Typoheads GmbH',
-	'CGLcompliance' => NULL,
-	'CGLcompliance_note' => NULL,
-	'constraints' =>
-	array (
-		'depends' =>
-		array (
-		),
-		'conflicts' =>
-		array (
-		),
-		'suggests' =>
-		array (
-		),
-	),
+    'title' => 'Webkit PDFs',
+    'description' => 'Generate PDF files using WebKit rendering engine.',
+    'category' => 'plugin',
+    'shy' => 0,
+    'version' => '1.3.5',
+    'dependencies' => '',
+    'conflicts' => '',
+    'priority' => '',
+    'loadOrder' => '',
+    'module' => '',
+    'state' => 'beta',
+    'uploadfolder' => 0,
+    'createDirs' => 'typo3temp/tx_webkitpdf/',
+    'modify_tables' => '',
+    'clearcacheonload' => 0,
+    'lockType' => '',
+    'author' => 'Dev-Team Typoheads',
+    'author_email' => 'dev@typoheads.at',
+    'author_company' => 'Typoheads GmbH',
+    'CGLcompliance' => null,
+    'CGLcompliance_note' => null,
+    'constraints' =>
+    array (
+        'depends' =>
+        array (
+        ),
+        'conflicts' =>
+        array (
+        ),
+        'suggests' =>
+        array (
+        ),
+    ),
 );
-
-?>

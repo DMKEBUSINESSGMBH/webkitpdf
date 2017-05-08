@@ -1,6 +1,6 @@
 <?php
-if(!defined('TYPO3_MODE')) {
-	die ('Access denied.');
+if (!defined('TYPO3_MODE')) {
+    die('Access denied.');
 }
 
 t3lib_extMgm::addPItoST43($_EXTKEY, 'pi1/class.tx_webkitpdf_pi1.php', '_pi1', 'list_type', 0);
@@ -12,5 +12,3 @@ $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['clea
 $_EXTCONF = unserialize($_EXTCONF);
 $GLOBALS['TYPO3_CONF_VARS']['EXTCONF'][$_EXTKEY]['cacheThreshold'] = intval($_EXTCONF['cacheThreshold']);
 $GLOBALS['TYPO3_CONF_VARS']['EXTCONF'][$_EXTKEY]['debug'] = intval($_EXTCONF['debug']);
-
-?>

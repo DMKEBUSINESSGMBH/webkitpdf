@@ -32,319 +32,320 @@
 require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_cache.php');
 require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_utils.php');
 
-class tx_webkitpdf_pi1 extends tslib_pibase {
-	var $prefixId = 'tx_webkitpdf_pi1';
-	var $scriptRelPath = 'pi1/class.tx_webkitpdf_pi1.php';
-	var $extKey = 'webkitpdf';
+class tx_webkitpdf_pi1 extends tslib_pibase
+{
+    var $prefixId = 'tx_webkitpdf_pi1';
+    var $scriptRelPath = 'pi1/class.tx_webkitpdf_pi1.php';
+    var $extKey = 'webkitpdf';
 
-	// Disable caching: Don't check cHash, because the plugin is a USER_INT object
-	public $pi_checkCHash = FALSE;
-	public $pi_USER_INT_obj = 1;
+    // Disable caching: Don't check cHash, because the plugin is a USER_INT object
+    public $pi_checkCHash = false;
+    public $pi_USER_INT_obj = 1;
 
-	protected $cacheManager;
-	protected $scriptPath;
-	protected $outputPath;
-	protected $paramName;
-	protected $filename;
-	protected $filenameOnly;
-	protected $contentDisposition;
+    protected $cacheManager;
+    protected $scriptPath;
+    protected $outputPath;
+    protected $paramName;
+    protected $filename;
+    protected $filenameOnly;
+    protected $contentDisposition;
 
-	/**
-	 * Init parameters. Reads TypoScript settings.
-	 *
-	 * @param	array		$conf: The PlugIn configuration
-	 * @return	void
-	 */
-	protected function init($conf) {
+    /**
+     * Init parameters. Reads TypoScript settings.
+     *
+     * @param   array       $conf: The PlugIn configuration
+     * @return  void
+     */
+    protected function init($conf)
+    {
 
-		// Process stdWrap properties
-		$temp = $conf['scriptParams.'];
-		unset($conf['scriptParams.']);
-		$this->conf = $this->processStdWraps($conf);
-		if(is_array($temp)) {
-			$this->conf['scriptParams'] = $this->processStdWraps($temp);
-		}
+        // Process stdWrap properties
+        $temp = $conf['scriptParams.'];
+        unset($conf['scriptParams.']);
+        $this->conf = $this->processStdWraps($conf);
+        if (is_array($temp)) {
+            $this->conf['scriptParams'] = $this->processStdWraps($temp);
+        }
 
-		$this->pi_setPiVarDefaults();
+        $this->pi_setPiVarDefaults();
 
-		$this->scriptPath = t3lib_extMgm::extPath('webkitpdf') . 'res/';
-		if($this->conf['customScriptPath']) {
-			$this->scriptPath = $this->conf['customScriptPath'];
-		}
-		$this->outputPath = t3lib_div::getIndpEnv('TYPO3_DOCUMENT_ROOT');
-		if($this->conf['customTempOutputPath']) {
-			$this->outputPath .= tx_webkitpdf_utils::sanitizePath($this->conf['customTempOutputPath']);
-		} else {
-			$this->outputPath .= '/typo3temp/tx_webkitpdf/';
-		}
+        $this->scriptPath = t3lib_extMgm::extPath('webkitpdf') . 'res/';
+        if ($this->conf['customScriptPath']) {
+            $this->scriptPath = $this->conf['customScriptPath'];
+        }
+        $this->outputPath = t3lib_div::getIndpEnv('TYPO3_DOCUMENT_ROOT');
+        if ($this->conf['customTempOutputPath']) {
+            $this->outputPath .= tx_webkitpdf_utils::sanitizePath($this->conf['customTempOutputPath']);
+        } else {
+            $this->outputPath .= '/typo3temp/tx_webkitpdf/';
+        }
 
-		$this->paramName = 'urls';
-		if($this->conf['customParameterName']) {
-			$this->paramName = $this->conf['customParameterName'];
-		}
+        $this->paramName = 'urls';
+        if ($this->conf['customParameterName']) {
+            $this->paramName = $this->conf['customParameterName'];
+        }
 
-		$this->filename = $this->outputPath . $this->conf['filePrefix'] . tx_webkitpdf_utils::generateHash() . '.pdf';
-		$this->filenameOnly = basename($this->filename);
-		if($this->conf['staticFileName']) {
-			$this->filenameOnly = $this->conf['staticFileName'];
-		}
+        $this->filename = $this->outputPath . $this->conf['filePrefix'] . tx_webkitpdf_utils::generateHash() . '.pdf';
+        $this->filenameOnly = basename($this->filename);
+        if ($this->conf['staticFileName']) {
+            $this->filenameOnly = $this->conf['staticFileName'];
+        }
 
-		if(substr($this->filenameOnly, strlen($this->filenameOnly) - 4) !== '.pdf') {
-			$this->filenameOnly .= '.pdf';
-		}
+        if (substr($this->filenameOnly, strlen($this->filenameOnly) - 4) !== '.pdf') {
+            $this->filenameOnly .= '.pdf';
+        }
 
-		$this->readScriptSettings();
-		$this->cacheManager = t3lib_div::makeInstance('tx_webkitpdf_cache', $this->conf);
+        $this->readScriptSettings();
+        $this->cacheManager = t3lib_div::makeInstance('tx_webkitpdf_cache', $this->conf);
 
-		$this->contentDisposition = 'attachment';
-		if(intval($this->conf['openFilesInline']) === 1) {
-			$this->contentDisposition = 'inline';
-		}
+        $this->contentDisposition = 'attachment';
+        if (intval($this->conf['openFilesInline']) === 1) {
+            $this->contentDisposition = 'inline';
+        }
 
-		$this->initDosAttackPrevention();
-	}
+        $this->initDosAttackPrevention();
+    }
 
-	/**
-	 * Wenn wir unbegrenzt viele URLs zu lassen, dann besteht die Gefahr
-	 * dass der Server auf sich selbst eine DoS Attacke ausführt, indem eine
-	 * große Anzahl von URLs übergeben wird.
-	 *
-	 * @return void
-	 */
-	protected function initDosAttackPrevention() {
-		if ($this->conf['numberOfUrlsAllowedToProcess']) {
-			$this->makeSureNotMoreUrlsAreProcessedThanAllowed();
-		}
-	}
+    /**
+     * Wenn wir unbegrenzt viele URLs zu lassen, dann besteht die Gefahr
+     * dass der Server auf sich selbst eine DoS Attacke ausführt, indem eine
+     * große Anzahl von URLs übergeben wird.
+     *
+     * @return void
+     */
+    protected function initDosAttackPrevention()
+    {
+        if ($this->conf['numberOfUrlsAllowedToProcess']) {
+            $this->makeSureNotMoreUrlsAreProcessedThanAllowed();
+        }
+    }
 
-	/**
-	 * @return void
-	 */
-	protected function makeSureNotMoreUrlsAreProcessedThanAllowed() {
-		if (is_array($this->piVars[$this->paramName])) {
-			$this->piVars[$this->paramName] = array_slice(
-				$this->piVars[$this->paramName],
-				0,
-				intval($this->conf['numberOfUrlsAllowedToProcess'])
-			);
-		}
-	}
+    /**
+     * @return void
+     */
+    protected function makeSureNotMoreUrlsAreProcessedThanAllowed()
+    {
+        if (is_array($this->piVars[$this->paramName])) {
+            $this->piVars[$this->paramName] = array_slice(
+                $this->piVars[$this->paramName],
+                0,
+                intval($this->conf['numberOfUrlsAllowedToProcess'])
+            );
+        }
+    }
 
-	/**
-	 * The main method of the PlugIn
-	 *
-	 * @param	string		$content: The PlugIn content
-	 * @param	array		$conf: The PlugIn configuration
-	 * @return	The content that is displayed on the website
-	 */
-	public function main($content,$conf)	{
-		$this->init($conf);
+    /**
+     * The main method of the PlugIn
+     *
+     * @param   string      $content: The PlugIn content
+     * @param   array       $conf: The PlugIn configuration
+     * @return  The content that is displayed on the website
+     */
+    public function main($content, $conf)
+    {
+        $this->init($conf);
 
-		$urls = $this->piVars[$this->paramName];
-		if(!$urls) {
-			if (isset($this->conf['urls.'])) {
-				$urls = $this->conf['urls.'];
-			} else {
-				$urls = array($this->conf['urls']);
-			}
-		}
+        $urls = $this->piVars[$this->paramName];
+        if (!$urls) {
+            if (isset($this->conf['urls.'])) {
+                $urls = $this->conf['urls.'];
+            } else {
+                $urls = array($this->conf['urls']);
+            }
+        }
 
-		$content = '';
-		if(!empty($urls)) {
-			if(count($urls) > 0) {
+        $content = '';
+        if (!empty($urls)) {
+            if (count($urls) > 0) {
+                $origUrls = implode(' ', $urls);
+                $loadFromCache = true;
 
-				$origUrls = implode(' ', $urls);
-				$loadFromCache = TRUE;
+                $allowedHosts = false;
+                if ($this->conf['allowedHosts']) {
+                    $allowedHosts = t3lib_div::trimExplode(',', $this->conf['allowedHosts']);
+                }
 
-				$allowedHosts = FALSE;
-				if($this->conf['allowedHosts']) {
-					$allowedHosts = t3lib_div::trimExplode(',', $this->conf['allowedHosts']);
-				}
+                foreach ($urls as &$url) {
+                    if ($GLOBALS['TSFE']->loginUser) {
+                        // Do not cache access restricted pages
+                        $loadFromCache = false;
+                        $url = tx_webkitpdf_utils::appendFESessionInfoToURL($url);
+                    }
+                    $url = tx_webkitpdf_utils::sanitizeURL($url, $allowedHosts);
+                }
 
-				foreach($urls as &$url) {
-					if($GLOBALS['TSFE']->loginUser) {
+                // not in cache. generate PDF file
+                if (!$loadFromCache || !$this->cacheManager->isInCache($origUrls) || $this->conf['debugScriptCall'] === '1') {
+                    $scriptCall =   escapeshellcmd($this->scriptPath. 'wkhtmltopdf') . ' ' .
+                                    $this->buildScriptOptions() . ' ' .
+                                    implode(' ', $urls) . ' ' .
+                                    escapeshellarg($this->filename) .
+                                    ' 2>&1';
 
-						// Do not cache access restricted pages
-						$loadFromCache = FALSE;
-						$url = tx_webkitpdf_utils::appendFESessionInfoToURL($url);
-					}
-					$url = tx_webkitpdf_utils::sanitizeURL($url, $allowedHosts);
-				}
+                    exec($scriptCall, $output);
 
-				// not in cache. generate PDF file
-				if(!$loadFromCache || !$this->cacheManager->isInCache($origUrls) || $this->conf['debugScriptCall'] === '1') {
+                    // Write debugging information to devLog
+                    tx_webkitpdf_utils::debugLogging('Executed shell command', -1, array($scriptCall));
+                    tx_webkitpdf_utils::debugLogging('Output of shell command', -1, $output);
 
-					$scriptCall = 	escapeshellcmd($this->scriptPath. 'wkhtmltopdf') . ' ' .
-									$this->buildScriptOptions() . ' ' .
-									implode(' ', $urls) . ' ' .
-									escapeshellarg($this->filename) .
-									' 2>&1';
+                    $this->cacheManager->store($origUrls, $this->filename);
+                } else {
+                    //read filepath from cache
+                    $this->filename = $this->cacheManager->get($origUrls);
+                }
 
-					exec($scriptCall, $output);
+                if ($this->conf['fileOnly'] == 1) {
+                    return $this->filename;
+                }
 
-					// Write debugging information to devLog
-					tx_webkitpdf_utils::debugLogging('Executed shell command', -1, array($scriptCall));
-					tx_webkitpdf_utils::debugLogging('Output of shell command', -1, $output);
+                $filesize = filesize($this->filename);
 
-					$this->cacheManager->store($origUrls, $this->filename);
+                header('Content-type: application/pdf');
+                header('Content-Transfer-Encoding: Binary');
+                header('Content-Length: ' . $filesize);
+                header('Content-Disposition: ' . $this->contentDisposition . '; filename="' . $this->filenameOnly . '"');
+                header('X-Robots-Tag: noindex');
+                readfile($this->filename);
 
-				} else {
+                if (!$this->cacheManager->isCachingEnabled()) {
+                    unlink($this->filename);
+                }
+                exit(0);
+            }
+        }
 
-					//read filepath from cache
-					$this->filename = $this->cacheManager->get($origUrls);
-				}
+        return $this->pi_wrapInBaseClass($content);
+    }
 
-				if($this->conf['fileOnly'] == 1) {
-					return $this->filename;
-				}
+    protected function readScriptSettings()
+    {
+        $defaultSettings = array(
+            'footer-right' => '[page]/[toPage]',
+            'footer-font-size' => '6',
+            'header-font-size' => '6',
+            'margin-left' => '15mm',
+            'margin-right' => '15mm',
+            'margin-top' => '15mm',
+            'margin-bottom' => '15mm',
+        );
 
-				$filesize = filesize($this->filename);
+        $scriptParams = array();
+        $tsSettings = $this->conf['scriptParams'];
+        foreach ($defaultSettings as $param => $value) {
+            if (!isset($tsSettings[$param])) {
+                $tsSettings[$param] = $value;
+            }
+        }
 
-				header('Content-type: application/pdf');
-				header('Content-Transfer-Encoding: Binary');
-				header('Content-Length: ' . $filesize);
-				header('Content-Disposition: ' . $this->contentDisposition . '; filename="' . $this->filenameOnly . '"');
-				header('X-Robots-Tag: noindex');
-				readfile($this->filename);
+        $finalSettings = array();
+        foreach ($tsSettings as $param => $value) {
+            $value = trim($value);
+            if (substr($param, 0, 2) !== '--') {
+                $param = '--' . $param;
+            }
+            $finalSettings[$param] = $value;
+        }
 
-				if(!$this->cacheManager->isCachingEnabled()) {
-					unlink($this->filename);
-				}
-				exit(0);
-			}
-		}
+        return $finalSettings;
+    }
 
-		return $this->pi_wrapInBaseClass($content);
-	}
+    /**
+     * Creates the parameters for the wkhtmltopdf call.
+     *
+     * @return string The parameter string
+     */
+    protected function buildScriptOptions()
+    {
+        $options = array();
+        if ($this->conf['pageURLInHeader']) {
+            $options['--header-center'] = '[webpage]';
+        }
 
-	protected function readScriptSettings() {
-		$defaultSettings = array(
-			'footer-right' => '[page]/[toPage]',
-			'footer-font-size' => '6',
-			'header-font-size' => '6',
-			'margin-left' => '15mm',
-			'margin-right' => '15mm',
-			'margin-top' => '15mm',
-			'margin-bottom' => '15mm',
-		);
+        if ($this->conf['copyrightNotice']) {
+            $options['--footer-left'] = '© ' . date('Y', time()) . $this->conf['copyrightNotice'] . '';
+        }
 
-		$scriptParams = array();
-		$tsSettings = $this->conf['scriptParams'];
-		foreach($defaultSettings as $param => $value) {
-			if(!isset($tsSettings[$param])) {
-				$tsSettings[$param] = $value;
-			}
-		}
+        if ($this->conf['additionalStylesheet']) {
+            $this->conf['additionalStylesheet'] = $this->sanitizePath($this->conf['additionalStylesheet'], false);
+            $options['--user-style-sheet'] = t3lib_div::getIndpEnv('TYPO3_REQUEST_HOST') . $this->conf['additionalStylesheet'];
+        }
 
-		$finalSettings = array();
-		foreach($tsSettings as $param => $value) {
-			$value = trim($value);
-			if(substr($param, 0, 2) !== '--') {
-				$param = '--' . $param;
-			}
-			$finalSettings[$param] = $value;
-		}
-		return $finalSettings;
-	}
+        $userSettings = $this->readScriptSettings();
+        $options = array_merge($options, $userSettings);
 
-	/**
-	 * Creates the parameters for the wkhtmltopdf call.
-	 *
-	 * @return string The parameter string
-	 */
-	protected function buildScriptOptions() {
-		$options = array();
-		if($this->conf['pageURLInHeader']) {
-			$options['--header-center'] = '[webpage]';
-		}
+        $paramsString = '';
+        foreach ($options as $param => $value) {
+            if (strlen($value) > 0) {
+                $value = escapeshellarg($value);
+            }
+            $paramsString .= ' ' . $param . ' ' . $value;
+        }
 
-		if($this->conf['copyrightNotice']) {
-			$options['--footer-left'] = '© ' . date('Y', time()) . $this->conf['copyrightNotice'] . '';
-		}
+        foreach ($_COOKIE as $cookieName => $cookieValue) {
+            $paramsString .= ' --cookie ' . escapeshellarg($cookieName) . ' ' . escapeshellarg($cookieValue);
+        }
 
-		if($this->conf['additionalStylesheet']) {
-			$this->conf['additionalStylesheet'] = $this->sanitizePath($this->conf['additionalStylesheet'], FALSE);
-			$options['--user-style-sheet'] = t3lib_div::getIndpEnv('TYPO3_REQUEST_HOST') . $this->conf['additionalStylesheet'];
+        return $paramsString;
+    }
 
-		}
+    /**
+     * Makes sure that given path has a slash as first and last character
+     *
+     * @param   string      $path: The path to be sanitized
+     * @return  string      sanitized path
+     */
+    protected function sanitizePath($path, $trailingSlash = true)
+    {
 
-		$userSettings = $this->readScriptSettings();
-		$options = array_merge($options, $userSettings);
+        // slash as last character
+        if ($trailingSlash && substr($path, (strlen($path) - 1)) !== '/') {
+            $path .= '/';
+        }
 
-		$paramsString = '';
-		foreach($options as $param => $value) {
-			if(strlen($value) > 0) {
-				$value = escapeshellarg($value);
-			}
-			$paramsString .= ' ' . $param . ' ' . $value;
-		}
+        //slash as first character
+        if (substr($path, 0, 1) !== '/') {
+            $path = '/' . $path;
+        }
 
-		foreach ($_COOKIE as $cookieName => $cookieValue) {
-			$paramsString .= ' --cookie ' . escapeshellarg($cookieName) . ' ' . escapeshellarg($cookieValue);
-		}
+        return $path;
+    }
 
-		return $paramsString;
-	}
+    /**
+     * Processes the stdWrap properties of the input array
+     *
+     * @param   array   The TypoScript array
+     * @return  array   The processed values
+     */
+    protected function processStdWraps($tsSettings)
+    {
 
-	/**
-	 * Makes sure that given path has a slash as first and last character
-	 *
-	 * @param	string		$path: The path to be sanitized
-	 * @return	string		sanitized path
-	 */
-	protected function sanitizePath($path, $trailingSlash = TRUE) {
+        // Get TS values and process stdWrap properties
+        if (is_array($tsSettings)) {
+            foreach ($tsSettings as $key => $value) {
+                $process = true;
+                if (substr($key, -1) === '.') {
+                    $key = substr($key, 0, -1);
+                    if (array_key_exists($key, $tsSettings)) {
+                        $process = false;
+                    }
+                }
 
-		// slash as last character
-		if($trailingSlash && substr($path, (strlen($path) - 1)) !== '/') {
-			$path .= '/';
-		}
+                if ((substr($key, -1) === '.' && !array_key_exists(substr($key, 0, -1), $tsSettings)) ||
+                    (substr($key, -1) !== '.' && array_key_exists($key . '.', $tsSettings)) && !strstr($key, 'scriptParams')) {
+                    $tsSettings[$key] = $this->cObj->stdWrap($value, $tsSettings[$key . '.']);
 
-		//slash as first character
-		if(substr($path, 0, 1) !== '/') {
-			$path = '/' . $path;
-		}
+                    // Remove the additional TS properties after processing, otherwise they'll be translated to pdf properties
+                    if (isset($tsSettings[$key . '.'])) {
+                        unset($tsSettings[$key . '.']);
+                    }
+                }
+            }
+        }
 
-		return $path;
-	}
-
-	/**
-	 * Processes the stdWrap properties of the input array
-	 *
-	 * @param	array	The TypoScript array
-	 * @return	array	The processed values
-	 */
-	protected function processStdWraps($tsSettings) {
-
-		// Get TS values and process stdWrap properties
-		if(is_array($tsSettings)) {
-			foreach ($tsSettings as $key => $value) {
-				$process = TRUE;
-				if (substr($key, -1) === '.') {
-					$key = substr($key, 0, -1);
-					if (array_key_exists($key, $tsSettings)) {
-						$process = FALSE;
-					}
-				}
-
-				if ((substr($key, -1) === '.' && !array_key_exists(substr($key, 0, -1), $tsSettings)) ||
-					(substr($key, -1) !== '.' && array_key_exists($key . '.', $tsSettings)) && !strstr($key, 'scriptParams')) {
-
-					$tsSettings[$key] = $this->cObj->stdWrap($value, $tsSettings[$key . '.']);
-
-					// Remove the additional TS properties after processing, otherwise they'll be translated to pdf properties
-					if (isset($tsSettings[$key . '.'])) {
-						unset($tsSettings[$key . '.']);
-					}
-				}
-			}
-		}
-		return $tsSettings;
-	}
-
+        return $tsSettings;
+    }
 }
 
 if (defined('TYPO3_MODE') && $TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']) {
-	include_once($TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']);
+    include_once($TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']);
 }
-
-?>
