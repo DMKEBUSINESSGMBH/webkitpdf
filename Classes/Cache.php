@@ -78,7 +78,7 @@ class Cache
             'filename', 'tx_webkitpdf_cache',
             array('where' => 'crdate<' . $threshold, 'enablefieldsoff' => true)
         );
-        if (empty($rows)) {
+        if (!empty($rows)) {
             $filenames = array();
             foreach ($rows as $row) {
                 if (file_exists($row['filename'])) {
@@ -96,9 +96,9 @@ class Cache
 
     /**
      * @param string $urls
-     * @return boolean
+     * @return bool
      */
-    public function isInCache(string $urls) : boolean
+    public function isInCache(string $urls) : bool
     {
         $found = false;
         if ($this->isEnabled) {
@@ -154,9 +154,9 @@ class Cache
     }
 
     /**
-     * @return boolean
+     * @return bool
      */
-    public function isCachingEnabled() : boolean
+    public function isCachingEnabled() : bool
     {
         return $this->isEnabled;
     }
