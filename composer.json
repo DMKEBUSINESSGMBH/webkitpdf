@@ -1,5 +1,5 @@
 {
-    "name" : "dmk/webkitpdf",
+    "name" : "typo3-ter/webkitpdf",
     "description" : "Extend TCEMAIN.clearCacheCmd width some userfull options like using of aliases, clearing whole branches, clearing pages on the ground of their content etc.",
     "version" : "2.0.0",
     "type" : "typo3-cms-extension",
