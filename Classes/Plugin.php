@@ -1,9 +1,11 @@
 <?php
+namespace DMK\Webkitpdf;
+
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2009 Dev-Team Typoheads <dev@typoheads.at>
- *  All rights reserved
+ * (c) DMK E-BUSINESS GmbH <kontakt@dmk-ebusiness.de>
+ * All rights reserved
  *
  *  This script is part of the TYPO3 project. The TYPO3 project is
  *  free software; you can redistribute it and/or modify
@@ -21,33 +23,61 @@
  *
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
+
 /**
- * Plugin 'WebKit PDFs' for the 'webkitpdf' extension.
+ * DMK\Webkitpdf$Plugin
  *
- * @author Reinhard Führicht <rf@typoheads.at>
+ * @package         TYPO3
+ * @subpackage      webkitpdf
+ * @author          Hannes Bochmann
+ * @license         http://www.gnu.org/licenses/lgpl.html
+ *                  GNU Lesser General Public License, version 3 or later
  */
-
-// Fix for 6.2
-// require_once(PATH_tslib . 'class.tslib_pibase.php');
-require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_cache.php');
-require_once(t3lib_extMgm::extPath('webkitpdf') . 'res/class.tx_webkitpdf_utils.php');
-
-class tx_webkitpdf_pi1 extends tslib_pibase
+class Plugin extends \Tx_Rnbase_Frontend_Plugin
 {
-    var $prefixId = 'tx_webkitpdf_pi1';
-    var $scriptRelPath = 'pi1/class.tx_webkitpdf_pi1.php';
-    var $extKey = 'webkitpdf';
+    /**
+     * @var string
+     */
+    public $prefixId = 'tx_webkitpdf_pi1';
 
-    // Disable caching: Don't check cHash, because the plugin is a USER_INT object
-    public $pi_checkCHash = false;
-    public $pi_USER_INT_obj = 1;
+    /**
+     * @var string
+     */
+    public  $extKey = 'webkitpdf';
 
+    /**
+     * @var \DMK\Webkitpdf\Cache
+     */
     protected $cacheManager;
+
+    /**
+     * @var string
+     */
     protected $scriptPath;
+
+    /**
+     * @var string
+     */
     protected $outputPath;
+
+    /**
+     * @var string
+     */
     protected $paramName;
+
+    /**
+     * @var string
+     */
     protected $filename;
+
+    /**
+     * @var string
+     */
     protected $filenameOnly;
+
+    /**
+     * @var string
+     */
     protected $contentDisposition;
 
     /**
@@ -69,13 +99,13 @@ class tx_webkitpdf_pi1 extends tslib_pibase
 
         $this->pi_setPiVarDefaults();
 
-        $this->scriptPath = t3lib_extMgm::extPath('webkitpdf') . 'res/';
+        $this->scriptPath = \tx_rnbase_util_Extensions::extPath('webkitpdf') . 'Resources/Private/Binaries';
         if ($this->conf['customScriptPath']) {
             $this->scriptPath = $this->conf['customScriptPath'];
         }
-        $this->outputPath = t3lib_div::getIndpEnv('TYPO3_DOCUMENT_ROOT');
+        $this->outputPath = \tx_rnbase_util_Misc::getIndpEnv('TYPO3_DOCUMENT_ROOT');
         if ($this->conf['customTempOutputPath']) {
-            $this->outputPath .= tx_webkitpdf_utils::sanitizePath($this->conf['customTempOutputPath']);
+            $this->outputPath .= Utility::sanitizePath($this->conf['customTempOutputPath']);
         } else {
             $this->outputPath .= '/typo3temp/tx_webkitpdf/';
         }
@@ -85,7 +115,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase
             $this->paramName = $this->conf['customParameterName'];
         }
 
-        $this->filename = $this->outputPath . $this->conf['filePrefix'] . tx_webkitpdf_utils::generateHash() . '.pdf';
+        $this->filename = $this->outputPath . $this->conf['filePrefix'] . Utility::generateHash() . '.pdf';
         $this->filenameOnly = basename($this->filename);
         if ($this->conf['staticFileName']) {
             $this->filenameOnly = $this->conf['staticFileName'];
@@ -96,7 +126,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase
         }
 
         $this->readScriptSettings();
-        $this->cacheManager = t3lib_div::makeInstance('tx_webkitpdf_cache', $this->conf);
+        $this->cacheManager = \tx_rnbase::makeInstance('DMK\\Webkitpdf\\Cache', $this->conf);
 
         $this->contentDisposition = 'attachment';
         if (intval($this->conf['openFilesInline']) === 1) {
@@ -162,16 +192,16 @@ class tx_webkitpdf_pi1 extends tslib_pibase
 
                 $allowedHosts = false;
                 if ($this->conf['allowedHosts']) {
-                    $allowedHosts = t3lib_div::trimExplode(',', $this->conf['allowedHosts']);
+                    $allowedHosts = \Tx_Rnbase_Utility_Strings::trimExplode(',', $this->conf['allowedHosts']);
                 }
 
                 foreach ($urls as &$url) {
                     if ($GLOBALS['TSFE']->loginUser) {
                         // Do not cache access restricted pages
                         $loadFromCache = false;
-                        $url = tx_webkitpdf_utils::appendFESessionInfoToURL($url);
+                        $url = Utility::appendFESessionInfoToURL($url);
                     }
-                    $url = tx_webkitpdf_utils::sanitizeURL($url, $allowedHosts);
+                    $url = Utility::sanitizeURL($url, $allowedHosts);
                 }
 
                 // not in cache. generate PDF file
@@ -185,8 +215,8 @@ class tx_webkitpdf_pi1 extends tslib_pibase
                     exec($scriptCall, $output);
 
                     // Write debugging information to devLog
-                    tx_webkitpdf_utils::debugLogging('Executed shell command', -1, array($scriptCall));
-                    tx_webkitpdf_utils::debugLogging('Output of shell command', -1, $output);
+                    Utility::debugLogging('Executed shell command', -1, array($scriptCall));
+                    Utility::debugLogging('Output of shell command', -1, $output);
 
                     $this->cacheManager->store($origUrls, $this->filename);
                 } else {
@@ -267,7 +297,7 @@ class tx_webkitpdf_pi1 extends tslib_pibase
 
         if ($this->conf['additionalStylesheet']) {
             $this->conf['additionalStylesheet'] = $this->sanitizePath($this->conf['additionalStylesheet'], false);
-            $options['--user-style-sheet'] = t3lib_div::getIndpEnv('TYPO3_REQUEST_HOST') . $this->conf['additionalStylesheet'];
+            $options['--user-style-sheet'] = \tx_rnbase_util_Misc::getIndpEnv('TYPO3_REQUEST_HOST') . $this->conf['additionalStylesheet'];
         }
 
         $userSettings = $this->readScriptSettings();
@@ -344,8 +374,4 @@ class tx_webkitpdf_pi1 extends tslib_pibase
 
         return $tsSettings;
     }
-}
-
-if (defined('TYPO3_MODE') && $TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']) {
-    include_once($TYPO3_CONF_VARS[TYPO3_MODE]['XCLASS']['ext/webkitpdf/pi1/class.tx_webkitpdf_pi1.php']);
 }
