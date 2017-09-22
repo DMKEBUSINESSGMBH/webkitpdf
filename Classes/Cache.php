@@ -121,7 +121,7 @@ class Cache
     {
         if ($this->isEnabled) {
             $insertFields = array(
-                'crdate' => time(),
+                'crdate' => $GLOBALS['EXEC_TIME'],
                 'filename' => $filename,
                 'urls' => md5($urls)
             );
