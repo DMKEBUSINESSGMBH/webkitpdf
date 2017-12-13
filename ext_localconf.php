@@ -12,3 +12,9 @@ $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['clea
 $_EXTCONF = unserialize($_EXTCONF);
 $GLOBALS['TYPO3_CONF_VARS']['EXTCONF'][$_EXTKEY]['cacheThreshold'] = intval($_EXTCONF['cacheThreshold']);
 $GLOBALS['TYPO3_CONF_VARS']['EXTCONF'][$_EXTKEY]['debug'] = intval($_EXTCONF['debug']);
+
+tx_rnbase::load('Tx_Rnbase_Utility_Cache');
+Tx_Rnbase_Utility_Cache::addExcludedParametersForCacheHash(array(
+    // parameter added when a user is logged in
+    'FE_SESSION_KEY'
+));
