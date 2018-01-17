@@ -228,14 +228,33 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
                     return $this->filename;
                 }
 
-                $filesize = filesize($this->filename);
+                if (!($filesize = filesize($this->filename))) {
+                    \tx_rnbase_util_Logger::warn(
+                        'PDF file has no size',
+                        'webkitpdf',
+                        array(
+                            'Executed shell command' => $scriptCall,
+                            'Output of shell command' => $output
+                        )
+                    );
+                }
 
                 header('Content-type: application/pdf');
                 header('Content-Transfer-Encoding: Binary');
                 header('Content-Length: ' . $filesize);
                 header('Content-Disposition: ' . $this->contentDisposition . '; filename="' . $this->filenameOnly . '"');
                 header('X-Robots-Tag: noindex');
-                readfile($this->filename);
+
+                if (!(readfile($this->filename))) {
+                    \tx_rnbase_util_Logger::warn(
+                        'PDF file could not be read',
+                        'webkitpdf',
+                        array(
+                            'Executed shell command' => $scriptCall,
+                            'Output of shell command' => $output
+                        )
+                    );
+                }
 
                 if (!$this->cacheManager->isCachingEnabled()) {
                     unlink($this->filename);
