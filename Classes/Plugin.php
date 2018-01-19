@@ -81,6 +81,16 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
     protected $contentDisposition;
 
     /**
+     * @var string
+     */
+    protected $scriptCall;
+
+    /**
+     * @var string
+     */
+    protected $scriptCallOutput;
+
+    /**
      * Init parameters. Reads TypoScript settings.
      *
      * @param   array       $conf: The PlugIn configuration
@@ -174,7 +184,43 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
     public function main($content, $conf)
     {
         $this->init($conf);
+        $urls = $this->getUrls();
+        $content = '';
 
+        if (!empty($urls) && count($urls) > 0) {
+            $origUrls = implode(' ', $urls);
+            // Do not cache access restricted pages
+            $loadFromCache = $GLOBALS['TSFE']->loginUser ? false : true;
+            $urls = $this->sanitizeUrls($urls);
+
+            if (!$loadFromCache
+                || !$this->cacheManager->isInCache($origUrls)
+                || $this->conf['debugScriptCall'] === '1'
+            ) {
+                $this->generatePdf($urls, $origUrls);
+            } else {
+                $this->filename = $this->cacheManager->get($origUrls);
+            }
+
+            if ($this->conf['fileOnly'] == 1) {
+                return $this->filename;
+            }
+
+            if (!$this->pdfExists()) {
+                $this->handlePdfExistsNot();
+            } else {
+                $this->offerPdfForDownload();
+            }
+        }
+
+        return $this->pi_wrapInBaseClass($content);
+    }
+
+    /**
+     * @return array
+     */
+    protected function getUrls()
+    {
         $urls = $this->piVars[$this->paramName];
         if (!$urls) {
             if (isset($this->conf['urls.'])) {
@@ -184,86 +230,102 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
             }
         }
 
-        $content = '';
-        if (!empty($urls)) {
-            if (count($urls) > 0) {
-                $origUrls = implode(' ', $urls);
-                $loadFromCache = true;
+        return $urls;
+    }
 
-                $allowedHosts = false;
-                if ($this->conf['allowedHosts']) {
-                    $allowedHosts = \Tx_Rnbase_Utility_Strings::trimExplode(',', $this->conf['allowedHosts']);
-                }
-
-                foreach ($urls as &$url) {
-                    if ($GLOBALS['TSFE']->loginUser) {
-                        // Do not cache access restricted pages
-                        $loadFromCache = false;
-                        $url = Utility::appendFESessionInfoToURL($url);
-                    }
-                    $url = Utility::sanitizeURL($url, $allowedHosts);
-                }
-
-                // not in cache. generate PDF file
-                if (!$loadFromCache || !$this->cacheManager->isInCache($origUrls) || $this->conf['debugScriptCall'] === '1') {
-                    $scriptCall =   escapeshellcmd($this->scriptPath. 'wkhtmltopdf') . ' ' .
-                                    $this->buildScriptOptions() . ' ' .
-                                    implode(' ', $urls) . ' ' .
-                                    escapeshellarg($this->filename) .
-                                    ' 2>&1';
-
-                    exec($scriptCall, $output);
-
-                    // Write debugging information to devLog
-                    Utility::debugLogging('Executed shell command', -1, array($scriptCall));
-                    Utility::debugLogging('Output of shell command', -1, $output);
-
-                    $this->cacheManager->store($origUrls, $this->filename);
-                } else {
-                    //read filepath from cache
-                    $this->filename = $this->cacheManager->get($origUrls);
-                }
-
-                if ($this->conf['fileOnly'] == 1) {
-                    return $this->filename;
-                }
-
-                if (!($filesize = filesize($this->filename))) {
-                    \tx_rnbase_util_Logger::warn(
-                        'PDF file has no size',
-                        'webkitpdf',
-                        array(
-                            'Executed shell command' => $scriptCall,
-                            'Output of shell command' => $output
-                        )
-                    );
-                }
-
-                header('Content-type: application/pdf');
-                header('Content-Transfer-Encoding: Binary');
-                header('Content-Length: ' . $filesize);
-                header('Content-Disposition: ' . $this->contentDisposition . '; filename="' . $this->filenameOnly . '"');
-                header('X-Robots-Tag: noindex');
-
-                if (!(readfile($this->filename))) {
-                    \tx_rnbase_util_Logger::warn(
-                        'PDF file could not be read',
-                        'webkitpdf',
-                        array(
-                            'Executed shell command' => $scriptCall,
-                            'Output of shell command' => $output
-                        )
-                    );
-                }
-
-                if (!$this->cacheManager->isCachingEnabled()) {
-                    unlink($this->filename);
-                }
-                exit(0);
-            }
+    /**
+     * @param array $urls
+     *
+     * @return array
+     */
+    protected function sanitizeUrls(array $urls)
+    {
+        $allowedHosts = false;
+        if ($this->conf['allowedHosts']) {
+            $allowedHosts = \Tx_Rnbase_Utility_Strings::trimExplode(',', $this->conf['allowedHosts']);
         }
 
-        return $this->pi_wrapInBaseClass($content);
+        foreach ($urls as &$url) {
+            if ($GLOBALS['TSFE']->loginUser) {
+                $url = Utility::appendFESessionInfoToURL($url);
+            }
+            $url = Utility::sanitizeURL($url, $allowedHosts);
+        }
+
+        return $urls;
+    }
+
+    /**
+     * @param string $urls
+     * @param string $origUrls
+     *
+     * @return void
+     */
+    protected function generatePdf($urls, $origUrls)
+    {
+        $this->scriptCall =
+            escapeshellcmd($this->scriptPath . 'wkhtmltopdf') . ' ' .
+            $this->buildScriptOptions() . ' ' .
+            implode(' ', $urls) . ' ' .
+            escapeshellarg($this->filename) .
+            ' 2>&1';
+
+        exec($this->scriptCall, $this->scriptCallOutput);
+
+        // Write debugging information to devLog
+        Utility::debugLogging('Executed shell command', -1, array($this->scriptCall));
+        Utility::debugLogging('Output of shell command', -1, $this->scriptCallOutput);
+
+        if ($this->pdfExists()) {
+            $this->cacheManager->store($origUrls, $this->filename);
+        }
+    }
+
+    /**
+     * @return bool
+     */
+    protected function pdfExists()
+    {
+        return  file_exists($this->filename) &&
+                filesize($this->filename);
+    }
+
+    /**
+     * @return void
+     */
+    protected function handlePdfExistsNot()
+    {
+        \tx_rnbase_util_Logger::warn(
+            'PDF was not created successfully',
+            'webkitpdf',
+            array(
+                'Executed shell command' => $this->scriptCall,
+                'Output of shell command' => $this->scriptCallOutput
+            )
+        );
+
+        \tx_rnbase_util_TYPO3::getTSFE()->pageNotFoundAndExit(
+            'webkitpdf could not create the PDF file for the desired page. Check the devlog for more information.'
+        );
+    }
+
+    /**
+     * @return void
+     */
+    protected function offerPdfForDownload()
+    {
+        header('Content-type: application/pdf');
+        header('Content-Transfer-Encoding: Binary');
+        header('Content-Length: ' . filesize($this->filename));
+        header('Content-Disposition: ' . $this->contentDisposition . '; filename="' . $this->filenameOnly . '"');
+        header('X-Robots-Tag: noindex');
+        readfile($this->filename);
+
+        if (!$this->cacheManager->isCachingEnabled()) {
+            unlink($this->filename);
+        }
+
+        exit(0);
     }
 
     protected function readScriptSettings()
