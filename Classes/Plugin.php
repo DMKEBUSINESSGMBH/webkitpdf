@@ -245,14 +245,21 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
             $allowedHosts = \Tx_Rnbase_Utility_Strings::trimExplode(',', $this->conf['allowedHosts']);
         }
 
+        $utility = $this->getUtility();
+
         foreach ($urls as &$url) {
             if ($GLOBALS['TSFE']->loginUser) {
-                $url = Utility::appendFESessionInfoToURL($url);
+                $url = $utility->appendFESessionInfoToURL($url);
             }
-            $url = Utility::sanitizeURL($url, $allowedHosts);
+            $url = $utility->sanitizeURL($url, $allowedHosts);
         }
 
         return $urls;
+    }
+
+    protected function getUtility()
+    {
+        return new Utility();
     }
 
     /**
@@ -270,7 +277,7 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
             escapeshellarg($this->filename) .
             ' 2>&1';
 
-        exec($this->scriptCall, $this->scriptCallOutput);
+        $this->callExec();
 
         // Write debugging information to devLog
         Utility::debugLogging('Executed shell command', -1, array($this->scriptCall));
@@ -279,6 +286,14 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
         if ($this->pdfExists()) {
             $this->cacheManager->store($origUrls, $this->filename);
         }
+    }
+
+    /**
+     * @return void
+     */
+    protected function callExec()
+    {
+        exec($this->scriptCall, $this->scriptCallOutput);
     }
 
     /**
