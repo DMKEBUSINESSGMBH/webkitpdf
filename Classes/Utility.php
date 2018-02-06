@@ -42,7 +42,7 @@ class Utility
      * @param   string  $inputName URI resource name to safeguard, must not be empty
      * @return  string  $inputName escaped as needed
      */
-    public static function wrapUriName($inputName)
+    public function wrapUriName($inputName)
     {
         return escapeshellarg($inputName);
     }
@@ -57,17 +57,17 @@ class Utility
      * @return string The sanitized URL
      * @throws Exception
      */
-    public static function sanitizeURL($url, $allowedHosts)
+    public function sanitizeURL($url, $allowedHosts)
     {
 
         //Make sure that host of the URL matches TYPO3 host or one of allowed hosts set in TypoScript.
         $parts = parse_url($url);
         if ($parts['host'] !== \tx_rnbase_util_Misc::getIndpEnv('TYPO3_HOST_ONLY')) {
             if (($allowedHosts && !in_array($parts['host'], $allowedHosts)) || !$allowedHosts) {
-                throw new Exception('Host "' . $parts['host'] . '" does not match TYPO3 host.');
+                throw new \Exception('Host "' . $parts['host'] . '" does not match TYPO3 host.');
             }
         }
-        $url = self::wrapUriName($url);
+        $url = $this->wrapUriName($url);
 
         return $url;
     }
@@ -79,7 +79,7 @@ class Utility
      * @param   string  $url The URL to append the parameters to
      * @return  string  The processed URL
      */
-    public static function appendFESessionInfoToURL($url)
+    public function appendFESessionInfoToURL($url)
     {
         if (strpos($url, '?') !== false) {
             $url .= '&';
