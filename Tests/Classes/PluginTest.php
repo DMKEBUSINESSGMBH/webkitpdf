@@ -36,10 +36,44 @@ namespace DMK\Webkitpdf;
 class PluginTest extends \tx_rnbase_tests_BaseTestCase {
 
     /**
+     * @var string
+     */
+    protected $filename = PATH_site . 'typo3temp/var/Cache/.myTest.txt';
+
+    /**
+     * @var string
+     */
+    protected $scriptCall;
+
+    /**
+     * @var string
+     */
+    protected $scriptCallOutput;
+
+    /**
+     * @var string
+     */
+    private $userEmail = 'tegutcrm@dmkdev.de';
+
+    protected function setUp()
+    {
+        if (!file_exists($this->filename) === true) {
+            $content = "some text here";
+            $fp = fopen($this->filename,"wb");
+            fwrite($fp,$content);
+            fclose($fp);
+        }
+    }
+
+    /**
      * {@inheritDoc}
      * @see PHPUnit_Framework_TestCase::tearDown()
      */
     protected function tearDown() {
+        if (file_exists($this->filename) === true) {
+            unlink($this->filename);
+        }
+
         if (isset($_COOKIE['test1'])) {
             unset($_COOKIE['test1']);
         }
@@ -113,5 +147,155 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
             $this->callInaccessibleMethod($plugin, 'buildScriptOptions')
         );
     }
+
+    /**
+     * @group unit
+     */
+    public function testGetUrlsWithPiVars(){
+        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
+        $plugin->_set('paramName', 'urls');
+        $plugin->piVars = array(
+            'urls' => array(
+                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl'
+            )
+        );
+
+        self::assertEquals(
+            array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl'),
+            $this->callInaccessibleMethod($plugin, 'getUrls'),
+            "Keine URLs in piVars gefunden"
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testGetUrlsWithConfUrlsPunkt(){
+        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
+        $plugin->conf = array(
+            'urls.' => 'firstUrl,secondUrl,thirdUrl,fourthUrl,fifthUrl'
+        );
+
+        self::assertEquals(
+            'firstUrl,secondUrl,thirdUrl,fourthUrl,fifthUrl',
+            $this->callInaccessibleMethod($plugin, 'getUrls'),
+            "Keine URLs in conf urls gefunden"
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testGetUrlsWithConfUrls(){
+        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
+        $plugin->conf = array(
+            'urls' => array(
+                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl'
+            )
+        );
+
+        self::assertEquals(
+            array(array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl')),
+            $this->callInaccessibleMethod($plugin, 'getUrls'),
+            "Keine URLs in conf urls gefunden"
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testSanitizeUrlsWithAllowedHosts(){
+        $plugin = $this->getMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array('appendFESessionInfoToURL','sanitizeURL')
+        );
+        $plugin->conf['allowedHosts'] = 'wuppertal.localhost';
+        $urls = array(0 => 'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/', 1 => 'http://wuppertal.localhost/wsw-mobil/');
+
+        self::assertEquals(
+            array(0 => "'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/'", 1 => "'http://wuppertal.localhost/wsw-mobil/'"),
+            $this->callInaccessibleMethod($plugin,'sanitizeUrls', $urls),
+            "URLS could not be sanitized"
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testSanitizeUrlsWithoutAllowedHosts(){
+        $plugin = $this->getMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array('appendFESessionInfoToURL','sanitizeURL')
+        );
+        $exceptionMsg = 'Host "wuppertal.localhost" does not match TYPO3 host.';
+        $urls = array(0 => 'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/', 1 => 'http://wuppertal.localhost/wsw-mobil/');
+
+        self::assertEquals(
+            $this->setExpectedException(\Exception::class, $exceptionMsg),
+            $this->callInaccessibleMethod($plugin,'sanitizeUrls', $urls),
+            "URLS could not be sanitized"
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testAppendFESessionInfoToURLWithUrl(){
+        $plugin = $this->getMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array('appendFESessionInfoToURL','sanitizeURL')
+            );
+
+        $utility = $this->callInaccessibleMethod($plugin,'getUtility');
+
+        self::assertEquals(
+            "http://wuppertal.localhost/wsw-mobil/?FE_SESSION_KEY=-ea167a63cebc16788993ee16a410d793",
+            $this->callInaccessibleMethod($utility,'appendFESessionInfoToURL', 'http://wuppertal.localhost/wsw-mobil/'),
+            "Information about the FE User could not be appended to URL"
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testAppendFESessionInfoToURLWithEmptyUrl(){
+        $plugin = $this->getMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array('appendFESessionInfoToURL','sanitizeURL')
+        );
+        $utility = $this->callInaccessibleMethod($plugin,'getUtility');
+
+        self::assertEquals(
+            "?FE_SESSION_KEY=-ea167a63cebc16788993ee16a410d793",
+            $this->callInaccessibleMethod($utility,'appendFESessionInfoToURL', ''),
+            "Information about the FE User could not be appended to URL"
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testExecute(){
+        $plugin = $this->getAccessibleMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array('buildScriptOptions')
+        );
+        $plugin->_set('scriptCall', 'echo "DMK PDF test"');
+
+        $urls = array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl');
+
+        $this->callInaccessibleMethod($plugin, 'callExec');
+        self::assertEquals(array('DMK PDF test'), $plugin->_get('scriptCallOutput'));
+    }
+
+    /**
+     * @group unit
+     */
+    public function testPdfExists(){
+        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
+        $plugin->_set('filename', $this->filename);
+        self::assertTrue($this->callInaccessibleMethod($plugin, 'pdfExists'),'Datei nicht vorhanden');
+    }
+
 }
 
