@@ -151,6 +151,55 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
     /**
      * @group unit
      */
+    public function testMainWithoutUrls(){
+        $plugin = $this->getMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array('getUrls','sanitizeUrls','generatePdf','pdfExists','offerPdfForDownload','handlePdfExistsNot')
+        );
+
+        $plugin->expects($this->once())
+            ->method('getUrls');
+        $plugin->expects($this->never())
+            ->method('sanitizeUrls');
+
+        $result = $this->callInaccessibleMethod($plugin,'pi_wrapInBaseClass', '');
+
+        self::assertEquals(
+            $result,
+            $this->callInaccessibleMethod($plugin, 'main', 'Test', array()),
+            "Main hat kein Ergebnis zurückgegeben."
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testMainWithUrls(){
+        $plugin = $this->getAccessibleMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array('sanitizeUrls','generatePdf','pdfExists','offerPdfForDownload','handlePdfExistsNot')
+        );
+        $plugin->_set('paramName', 'urls');
+        $plugin->conf['allowedHosts'] = 'wuppertal.localhost';
+        $plugin->piVars = array(
+            'urls' => array(0 => 'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/', 1 => 'http://wuppertal.localhost/wsw-mobil/')
+        );
+
+        $plugin->expects($this->once())
+            ->method('sanitizeUrls');
+
+        $result = $this->callInaccessibleMethod($plugin,'pi_wrapInBaseClass', '');
+
+        self::assertEquals(
+            $result,
+            $this->callInaccessibleMethod($plugin, 'main', 'Test', array()),
+            "Main hat kein Ergebnis zurückgegeben."
+        );
+    }
+
+    /**
+     * @group unit
+     */
     public function testGetUrlsWithPiVars(){
         $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
         $plugin->_set('paramName', 'urls');
