@@ -33,12 +33,13 @@ namespace DMK\Webkitpdf;
  * @license         http://www.gnu.org/licenses/lgpl.html
  *                  GNU Lesser General Public License, version 3 or later
  */
-class PluginTest extends \tx_rnbase_tests_BaseTestCase {
+class PluginTest extends \tx_rnbase_tests_BaseTestCase
+{
 
     /**
      * @var string
      */
-    protected $filename = PATH_site . 'typo3temp/var/Cache/.myTest.txt';
+    protected $filename = PATH_site . 'typo3temp/.webkitpdf.test';
 
     /**
      * @var string
@@ -55,21 +56,21 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
      */
     private $userEmail = 'tegutcrm@dmkdev.de';
 
+    /**
+     * {@inheritDoc}
+     * @see PHPUnit_Framework_TestCase::setUp()
+     */
     protected function setUp()
     {
-        if (!file_exists($this->filename) === true) {
-            $content = "some text here";
-            $fp = fopen($this->filename,"wb");
-            fwrite($fp,$content);
-            fclose($fp);
-        }
+        $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['webkitpdf']['debug'] = false;
     }
 
     /**
      * {@inheritDoc}
      * @see PHPUnit_Framework_TestCase::tearDown()
      */
-    protected function tearDown() {
+    protected function tearDown()
+    {
         if (file_exists($this->filename) === true) {
             unlink($this->filename);
         }
@@ -80,12 +81,17 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
         if (isset($_COOKIE['test2'])) {
             unset($_COOKIE['test2']);
         }
+
+        if (isset($GLOBALS['TSFE']->loginUser)) {
+            unset($GLOBALS['TSFE']->loginUser);
+        }
     }
 
     /**
      * @group unit
      */
-    public function testInitCallsInitDosAttackPrevention() {
+    public function testInitCallsInitDosAttackPrevention()
+    {
         $plugin = $this->getMock('DMK\\Webkitpdf\\Plugin', array('initDosAttackPrevention'));
         $plugin->expects(self::once())
             ->method('initDosAttackPrevention');
@@ -96,7 +102,8 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
     /**
      * @group unit
      */
-    public function testInitDosAttackPreventionIfNotConfigured() {
+    public function testInitDosAttackPreventionIfNotConfigured()
+    {
         $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
         $plugin->_set('paramName', 'urls');
         $plugin->conf = array('');
@@ -117,7 +124,8 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
     /**
      * @group unit
      */
-    public function testInitDosAttackPreventionIfConfigured() {
+    public function testInitDosAttackPreventionIfConfigured()
+    {
         $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
         $plugin->_set('paramName', 'urls');
         $plugin->conf = array('numberOfUrlsAllowedToProcess' => 3);
@@ -135,7 +143,8 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
     /**
      * @group unit
      */
-    public function testBuildScriptOptionsAddsCookies() {
+    public function testBuildScriptOptionsAddsCookies()
+    {
         $_COOKIE['test1'] = 'value1';
         $_COOKIE['test2'] = 'value2';
 
@@ -151,187 +160,246 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
     /**
      * @group unit
      */
-    public function testMainWithoutUrls(){
-        $plugin = $this->getMock(
-            'DMK\\Webkitpdf\\Plugin',
-            array('getUrls','sanitizeUrls','generatePdf','pdfExists','offerPdfForDownload','handlePdfExistsNot')
+    public function testGetUrlsPrefersPiVarsOverTypoScriptConfiguration()
+    {
+        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
+        $plugin->_set('paramName', 'urls');
+        $plugin->piVars = array(
+            'urls' => array(
+                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl'
+            )
+        );
+        $plugin->conf = array(
+            'urls.' => array('fourthUrl', 'fifthUrl')
         );
 
-        $plugin->expects($this->once())
-            ->method('getUrls');
-        $plugin->expects($this->never())
-            ->method('sanitizeUrls');
-
-        $result = $this->callInaccessibleMethod($plugin,'pi_wrapInBaseClass', '');
-
         self::assertEquals(
-            $result,
-            $this->callInaccessibleMethod($plugin, 'main', 'Test', array()),
-            "Main hat kein Ergebnis zurückgegeben."
+            array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl'),
+            $this->callInaccessibleMethod($plugin, 'getUrls')
         );
     }
 
     /**
      * @group unit
      */
-    public function testMainWithUrls(){
+    public function testGetUrlsWithUrlsFromTypoScriptWhenConfigurationIsArray()
+    {
+        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
+        $plugin->conf = array(
+            'urls.' => array('firstUrl', 'secondUrl', 'thirdUrl')
+        );
+
+        self::assertEquals(
+            array('firstUrl', 'secondUrl', 'thirdUrl'),
+            $this->callInaccessibleMethod($plugin, 'getUrls')
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testGetUrlsWithUrlsFromTypoScriptWhenConfigurationIsString()
+    {
+        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
+        $plugin->conf = array('urls' => 'firstUrl');
+
+        self::assertEquals(
+            array('firstUrl'),
+            $this->callInaccessibleMethod($plugin, 'getUrls')
+        );
+    }
+
+    /**
+     * @param string $allowedHostsConfiguration
+     * @param array || boolean $expectedAllowedHostsForUtilityMethod
+     *
+     * @group unit
+     * @dataProvider dataProviderSanitizeUrls
+     */
+    public function testSanitizeUrlsWithoutFrontendUser(
+        $allowedHostsConfiguration,
+        $expectedAllowedHostsForUtilityMethod
+    ) {
+        $utility = $this->getMock('DMK\\Webkitpdf\\Utility', array('appendFESessionInfoToURL','sanitizeURL'));
+
+        $utility->expects(self::never())
+            ->method('appendFESessionInfoToURL');
+
+        $utility->expects(self::at(0))
+            ->method('sanitizeURL')
+            ->with('firstUrl', $expectedAllowedHostsForUtilityMethod)
+            ->will(self::returnValue('firstUrlSanitized'));
+
+        $utility->expects(self::at(1))
+            ->method('sanitizeURL')
+            ->with('secondUrl', $expectedAllowedHostsForUtilityMethod)
+            ->will(self::returnValue('secondUrlSanitized'));
+
+        $plugin = $this->getMock('DMK\\Webkitpdf\\Plugin', array('getUtility'));
+
+        $plugin->expects(self::once())
+            ->method('getUtility')
+            ->will(self::returnValue($utility));
+        $plugin->conf['allowedHosts'] = $allowedHostsConfiguration;
+
+        self::assertEquals(
+            array('firstUrlSanitized', 'secondUrlSanitized'),
+            $this->callInaccessibleMethod($plugin, 'sanitizeUrls', array('firstUrl', 'secondUrl'))
+        );
+    }
+
+    /**
+     * @param string $allowedHostsConfiguration
+     * @param array || boolean $expectedAllowedHostsForUtilityMethod
+     *
+     * @group unit
+     * @dataProvider dataProviderSanitizeUrls
+     */
+    public function testSanitizeUrlsWithFrontendUser(
+        $allowedHostsConfiguration,
+        $expectedAllowedHostsForUtilityMethod
+    ) {
+        $GLOBALS['TSFE'] = new \stdClass();
+        $GLOBALS['TSFE']->loginUser = 'test';
+        $utility = $this->getMock('DMK\\Webkitpdf\\Utility', array('appendFESessionInfoToURL','sanitizeURL'));
+
+        $utility->expects(self::at(0))
+            ->method('appendFESessionInfoToURL')
+            ->with('firstUrl')
+            ->will(self::returnValue('firstUrlForFeUser'));
+
+        $utility->expects(self::at(1))
+            ->method('sanitizeURL')
+            ->with('firstUrlForFeUser', $expectedAllowedHostsForUtilityMethod)
+            ->will(self::returnValue('firstUrlSanitized'));
+
+        $utility->expects(self::at(2))
+            ->method('appendFESessionInfoToURL')
+            ->with('secondUrl')
+            ->will(self::returnValue('secondUrlForFeUser'));
+
+        $utility->expects(self::at(3))
+            ->method('sanitizeURL')
+            ->with('secondUrlForFeUser', $expectedAllowedHostsForUtilityMethod)
+            ->will(self::returnValue('secondUrlSanitized'));
+
+        $plugin = $this->getMock('DMK\\Webkitpdf\\Plugin', array('getUtility'));
+
+        $plugin->expects(self::once())
+            ->method('getUtility')
+            ->will(self::returnValue($utility));
+        $plugin->conf['allowedHosts'] = $allowedHostsConfiguration;
+
+        self::assertEquals(
+            array('firstUrlSanitized', 'secondUrlSanitized'),
+            $this->callInaccessibleMethod($plugin, 'sanitizeUrls', array('firstUrl', 'secondUrl'))
+        );
+    }
+
+    /**
+     * @return string[][]|boolean[][]|string[][][]
+     */
+    public function dataProviderSanitizeUrls()
+    {
+        return array(
+            array('example.com, example.org', array('example.com', 'example.org')),
+            array('', false)
+        );
+    }
+
+    /**
+     * @group unit
+     */
+    public function testGetUtility()
+    {
+        self::assertInstanceOf(Utility::class, $this->callInaccessibleMethod(new Plugin(), 'getUtility'));
+    }
+
+    /**
+     * @group unit
+     */
+    public function testGeneratePdfIfNotCreatedSuccessfully()
+    {
         $plugin = $this->getAccessibleMock(
             'DMK\\Webkitpdf\\Plugin',
-            array('sanitizeUrls','generatePdf','pdfExists','offerPdfForDownload','handlePdfExistsNot')
-        );
-        $plugin->_set('paramName', 'urls');
-        $plugin->conf['allowedHosts'] = 'wuppertal.localhost';
-        $plugin->piVars = array(
-            'urls' => array(0 => 'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/', 1 => 'http://wuppertal.localhost/wsw-mobil/')
+            array('buildScriptOptions', 'pdfExists', 'callExec')
         );
 
-        $plugin->expects($this->once())
-            ->method('sanitizeUrls');
+        $plugin->expects(self::once())
+            ->method('callExec');
 
-        $result = $this->callInaccessibleMethod($plugin,'pi_wrapInBaseClass', '');
+        $plugin->expects(self::once())
+            ->method('buildScriptOptions')
+            ->will(self::returnValue('--someArgs test'));
+
+        $plugin->expects(self::once())
+            ->method('pdfExists')
+            ->will(self::returnValue(false));
+
+        $cacheManager = $this->getMock('stdClass', array('store'));
+        $cacheManager->expects(self::never())
+            ->method('store');
+        $plugin->_set('cacheManager', $cacheManager);
+
+        $plugin->_set('scriptPath', '/some/path/');
+        $plugin->_set('filename', '/some/otherpath/file.pdf');
+
+        $this->callInaccessibleMethod($plugin, 'generatePdf', array('first', 'second'), 'first, second');
 
         self::assertEquals(
-            $result,
-            $this->callInaccessibleMethod($plugin, 'main', 'Test', array()),
-            "Main hat kein Ergebnis zurückgegeben."
+            '/some/path/wkhtmltopdf --someArgs test first second \'/some/otherpath/file.pdf\' 2>&1',
+            $plugin->_get('scriptCall')
         );
     }
 
     /**
      * @group unit
      */
-    public function testGetUrlsWithPiVars(){
-        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
-        $plugin->_set('paramName', 'urls');
-        $plugin->piVars = array(
-            'urls' => array(
-                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl'
-            )
-        );
-
-        self::assertEquals(
-            array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl'),
-            $this->callInaccessibleMethod($plugin, 'getUrls'),
-            "Keine URLs in piVars gefunden"
-        );
-    }
-
-    /**
-     * @group unit
-     */
-    public function testGetUrlsWithConfUrlsPunkt(){
-        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
-        $plugin->conf = array(
-            'urls.' => 'firstUrl,secondUrl,thirdUrl,fourthUrl,fifthUrl'
-        );
-
-        self::assertEquals(
-            'firstUrl,secondUrl,thirdUrl,fourthUrl,fifthUrl',
-            $this->callInaccessibleMethod($plugin, 'getUrls'),
-            "Keine URLs in conf urls gefunden"
-        );
-    }
-
-    /**
-     * @group unit
-     */
-    public function testGetUrlsWithConfUrls(){
-        $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
-        $plugin->conf = array(
-            'urls' => array(
-                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl'
-            )
-        );
-
-        self::assertEquals(
-            array(array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl')),
-            $this->callInaccessibleMethod($plugin, 'getUrls'),
-            "Keine URLs in conf urls gefunden"
-        );
-    }
-
-    /**
-     * @group unit
-     */
-    public function testSanitizeUrlsWithAllowedHosts(){
-        $plugin = $this->getMock(
+    public function testGeneratePdfIfCreatedSuccessfully()
+    {
+        $plugin = $this->getAccessibleMock(
             'DMK\\Webkitpdf\\Plugin',
-            array('appendFESessionInfoToURL','sanitizeURL')
+            array('buildScriptOptions', 'pdfExists', 'callExec')
         );
-        $plugin->conf['allowedHosts'] = 'wuppertal.localhost';
-        $urls = array(0 => 'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/', 1 => 'http://wuppertal.localhost/wsw-mobil/');
+
+        $plugin->expects(self::once())
+            ->method('callExec');
+
+        $plugin->expects(self::once())
+            ->method('buildScriptOptions')
+            ->will(self::returnValue('--someArgs test'));
+
+        $plugin->expects(self::once())
+            ->method('pdfExists')
+            ->will(self::returnValue(true));
+
+        $cacheManager = $this->getMock('stdClass', array('store'));
+        $cacheManager->expects(self::once())
+            ->method('store')
+            ->with('first, second', '/some/otherpath/file.pdf');
+        $plugin->_set('cacheManager', $cacheManager);
+
+        $plugin->_set('scriptPath', '/some/path/');
+        $plugin->_set('filename', '/some/otherpath/file.pdf');
+
+        $this->callInaccessibleMethod($plugin, 'generatePdf', array('first', 'second'), 'first, second');
 
         self::assertEquals(
-            array(0 => "'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/'", 1 => "'http://wuppertal.localhost/wsw-mobil/'"),
-            $this->callInaccessibleMethod($plugin,'sanitizeUrls', $urls),
-            "URLS could not be sanitized"
+            '/some/path/wkhtmltopdf --someArgs test first second \'/some/otherpath/file.pdf\' 2>&1',
+            $plugin->_get('scriptCall')
         );
     }
 
     /**
      * @group unit
      */
-    public function testSanitizeUrlsWithoutAllowedHosts(){
-        $plugin = $this->getMock(
-            'DMK\\Webkitpdf\\Plugin',
-            array('appendFESessionInfoToURL','sanitizeURL')
-        );
-        $exceptionMsg = 'Host "wuppertal.localhost" does not match TYPO3 host.';
-        $urls = array(0 => 'http://wuppertal.localhost/wsw-energie-wasser/privatkunden/', 1 => 'http://wuppertal.localhost/wsw-mobil/');
-
-        self::assertEquals(
-            $this->setExpectedException(\Exception::class, $exceptionMsg),
-            $this->callInaccessibleMethod($plugin,'sanitizeUrls', $urls),
-            "URLS could not be sanitized"
-        );
-    }
-
-    /**
-     * @group unit
-     */
-    public function testAppendFESessionInfoToURLWithUrl(){
-        $plugin = $this->getMock(
-            'DMK\\Webkitpdf\\Plugin',
-            array('appendFESessionInfoToURL','sanitizeURL')
-            );
-
-        $utility = $this->callInaccessibleMethod($plugin,'getUtility');
-
-        self::assertEquals(
-            "http://wuppertal.localhost/wsw-mobil/?FE_SESSION_KEY=-ea167a63cebc16788993ee16a410d793",
-            $this->callInaccessibleMethod($utility,'appendFESessionInfoToURL', 'http://wuppertal.localhost/wsw-mobil/'),
-            "Information about the FE User could not be appended to URL"
-        );
-    }
-
-    /**
-     * @group unit
-     */
-    public function testAppendFESessionInfoToURLWithEmptyUrl(){
-        $plugin = $this->getMock(
-            'DMK\\Webkitpdf\\Plugin',
-            array('appendFESessionInfoToURL','sanitizeURL')
-        );
-        $utility = $this->callInaccessibleMethod($plugin,'getUtility');
-
-        self::assertEquals(
-            "?FE_SESSION_KEY=-ea167a63cebc16788993ee16a410d793",
-            $this->callInaccessibleMethod($utility,'appendFESessionInfoToURL', ''),
-            "Information about the FE User could not be appended to URL"
-        );
-    }
-
-    /**
-     * @group unit
-     */
-    public function testExecute(){
+    public function testCallExec()
+    {
         $plugin = $this->getAccessibleMock(
             'DMK\\Webkitpdf\\Plugin',
             array('buildScriptOptions')
         );
         $plugin->_set('scriptCall', 'echo "DMK PDF test"');
-
-        $urls = array(0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl');
 
         $this->callInaccessibleMethod($plugin, 'callExec');
         self::assertEquals(array('DMK PDF test'), $plugin->_get('scriptCallOutput'));
@@ -340,11 +408,235 @@ class PluginTest extends \tx_rnbase_tests_BaseTestCase {
     /**
      * @group unit
      */
-    public function testPdfExists(){
+    public function testPdfExists()
+    {
+        file_put_contents($this->filename, 'test');
         $plugin = \tx_rnbase::makeInstance($this->buildAccessibleProxy('DMK\\Webkitpdf\\Plugin'));
         $plugin->_set('filename', $this->filename);
-        self::assertTrue($this->callInaccessibleMethod($plugin, 'pdfExists'),'Datei nicht vorhanden');
+        self::assertTrue($this->callInaccessibleMethod($plugin, 'pdfExists'), 'Datei nicht vorhanden');
     }
 
-}
+    /**
+     * @group unit
+     */
+    public function testMainWhenNoUrlsGiven()
+    {
+        $plugin = $this->getMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array(
+                'getUrls',
+                'sanitizeUrls',
+                'initializeFileNameToOfferAsDownload',
+                'pdfExists',
+                'offerPdfForDownload',
+                'handlePdfExistsNot',
+                'pi_wrapInBaseClass',
+                'init',
+            )
+        );
 
+        $plugin->expects(self::once())
+            ->method('init')
+            ->with(array('someConfiguration'));
+        $plugin->expects(self::once())
+            ->method('getUrls')
+            ->will(self::returnValue(array()));
+        $plugin->expects(self::never())
+            ->method('sanitizeUrls');
+        $plugin->expects(self::never())
+            ->method('initializeFileNameToOfferAsDownload');
+        $plugin->expects(self::never())
+            ->method('pdfExists');
+        $plugin->expects(self::never())
+            ->method('offerPdfForDownload');
+        $plugin->expects(self::never())
+            ->method('handlePdfExistsNot');
+        $plugin->expects(self::once())
+            ->method('pi_wrapInBaseClass')
+            ->with('')
+            ->will(self::returnValue('tested'));
+
+        self::assertSame('tested', $this->callInaccessibleMethod($plugin, 'main', 'Test', array('someConfiguration')));
+    }
+
+    /**
+     * @group unit
+     */
+    public function testMainWhenUrlsGivenAndFileOnlyConfigured()
+    {
+        $plugin = $this->getAccessibleMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array(
+                'getUrls',
+                'sanitizeUrls',
+                'initializeFileNameToOfferAsDownload',
+                'pdfExists',
+                'offerPdfForDownload',
+                'handlePdfExistsNot',
+                'pi_wrapInBaseClass',
+                'init',
+            )
+        );
+
+        $plugin->_set('conf', array('fileOnly' => true));
+        $plugin->_set('filename', 'fileOnly');
+
+        $plugin->expects(self::once())
+            ->method('init')
+            ->with(array('someConfiguration'));
+        $plugin->expects(self::once())
+            ->method('getUrls')
+            ->will(self::returnValue(array(
+                0 => 'first',
+                1 => 'second'
+            )));
+        $plugin->expects(self::once())
+            ->method('sanitizeUrls')
+            ->with(array(
+                0 => 'first',
+                1 => 'second'
+            ))
+            ->will(self::returnValue(array(
+                0 => 'firstSanitized',
+                1 => 'secondSanitized'
+            )));
+        $plugin->expects(self::once())
+            ->method('initializeFileNameToOfferAsDownload')
+            ->with(array(
+                0 => 'firstSanitized',
+                1 => 'secondSanitized'
+            ));
+        $plugin->expects(self::never())
+            ->method('pdfExists');
+        $plugin->expects(self::never())
+            ->method('offerPdfForDownload');
+        $plugin->expects(self::never())
+            ->method('handlePdfExistsNot');
+        $plugin->expects(self::never())
+            ->method('pi_wrapInBaseClass');
+
+        self::assertSame('fileOnly', $this->callInaccessibleMethod($plugin, 'main', 'Test', array('someConfiguration')));
+    }
+
+    /**
+     * @group unit
+     */
+    public function testMainWhenUrlsGivenAndPdfNotCreated()
+    {
+        $plugin = $this->getAccessibleMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array(
+                'getUrls',
+                'sanitizeUrls',
+                'initializeFileNameToOfferAsDownload',
+                'pdfExists',
+                'offerPdfForDownload',
+                'handlePdfExistsNot',
+                'pi_wrapInBaseClass',
+                'init',
+            )
+        );
+
+        $plugin->_set('filename', 'fileOnly');
+
+        $plugin->expects(self::once())
+            ->method('init')
+            ->with(array('someConfiguration'));
+        $plugin->expects(self::once())
+            ->method('getUrls')
+            ->will(self::returnValue(array(
+                0 => 'first',
+                1 => 'second'
+            )));
+        $plugin->expects(self::once())
+            ->method('sanitizeUrls')
+            ->with(array(
+                0 => 'first',
+                1 => 'second'
+            ))
+            ->will(self::returnValue(array(
+                0 => 'firstSanitized',
+                1 => 'secondSanitized'
+            )));
+        $plugin->expects(self::once())
+            ->method('initializeFileNameToOfferAsDownload')
+            ->with(array(
+                0 => 'firstSanitized',
+                1 => 'secondSanitized'
+            ));
+        $plugin->expects(self::once())
+            ->method('pdfExists')
+            ->will(self::returnValue(false));
+        $plugin->expects(self::never())
+            ->method('offerPdfForDownload');
+        $plugin->expects(self::once())
+            ->method('handlePdfExistsNot');
+        $plugin->expects(self::once())
+            ->method('pi_wrapInBaseClass')
+            ->with('')
+            ->will(self::returnValue('tested'));
+
+        self::assertSame('tested', $this->callInaccessibleMethod($plugin, 'main', 'Test', array('someConfiguration')));
+    }
+
+    /**
+     * @group unit
+     */
+    public function testMainWhenUrlsGivenAndPdfCreated()
+    {
+        $plugin = $this->getAccessibleMock(
+            'DMK\\Webkitpdf\\Plugin',
+            array(
+                'getUrls',
+                'sanitizeUrls',
+                'initializeFileNameToOfferAsDownload',
+                'pdfExists',
+                'offerPdfForDownload',
+                'handlePdfExistsNot',
+                'pi_wrapInBaseClass',
+                'init',
+            )
+        );
+
+        $plugin->_set('filename', 'fileOnly');
+
+        $plugin->expects(self::once())
+            ->method('init')
+            ->with(array('someConfiguration'));
+        $plugin->expects(self::once())
+            ->method('getUrls')
+            ->will(self::returnValue(array(
+                0 => 'first',
+                1 => 'second'
+            )));
+        $plugin->expects(self::once())
+            ->method('sanitizeUrls')
+            ->with(array(
+                0 => 'first',
+                1 => 'second'
+            ))
+            ->will(self::returnValue(array(
+                0 => 'firstSanitized',
+                1 => 'secondSanitized'
+            )));
+        $plugin->expects(self::once())
+            ->method('initializeFileNameToOfferAsDownload')
+            ->with(array(
+                0 => 'firstSanitized',
+                1 => 'secondSanitized'
+            ));
+        $plugin->expects(self::once())
+            ->method('pdfExists')
+            ->will(self::returnValue(true));
+        $plugin->expects(self::once())
+            ->method('offerPdfForDownload');
+        $plugin->expects(self::never())
+            ->method('handlePdfExistsNot');
+        $plugin->expects(self::once())
+            ->method('pi_wrapInBaseClass')
+            ->with('')
+            ->will(self::returnValue('tested'));
+
+        self::assertSame('tested', $this->callInaccessibleMethod($plugin, 'main', 'Test', array('someConfiguration')));
+    }
+}

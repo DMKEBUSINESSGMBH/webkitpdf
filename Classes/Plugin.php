@@ -185,22 +185,11 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
     {
         $this->init($conf);
         $urls = $this->getUrls();
-        $content = '';
 
         if (!empty($urls) && count($urls) > 0) {
-            $origUrls = implode(' ', $urls);
-            // Do not cache access restricted pages
-            $loadFromCache = $GLOBALS['TSFE']->loginUser ? false : true;
             $urls = $this->sanitizeUrls($urls);
 
-            if (!$loadFromCache
-                || !$this->cacheManager->isInCache($origUrls)
-                || $this->conf['debugScriptCall'] === '1'
-            ) {
-                $this->generatePdf($urls, $origUrls);
-            } else {
-                $this->filename = $this->cacheManager->get($origUrls);
-            }
+            $this->initializeFileNameToOfferAsDownload($urls);
 
             if ($this->conf['fileOnly'] == 1) {
                 return $this->filename;
@@ -213,7 +202,30 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
             }
         }
 
-        return $this->pi_wrapInBaseClass($content);
+        return $this->pi_wrapInBaseClass('');
+    }
+
+    /**
+     * Either get PDF filename from cache or generate the PDF
+     *
+     * @param array $urls
+     *
+     * @return void
+     */
+    protected function initializeFileNameToOfferAsDownload(array $urls)
+    {
+        $originalUrls = implode(' ', $urls);
+        // Do not cache access restricted pages
+        $loadFromCache = $GLOBALS['TSFE']->loginUser ? false : true;
+
+        if (!$loadFromCache
+            || !$this->cacheManager->isInCache($originalUrls)
+            || $this->conf['debugScriptCall'] === '1'
+        ) {
+            $this->generatePdf($urls, $originalUrls);
+        } else {
+            $this->filename = $this->cacheManager->get($originalUrls);
+        }
     }
 
     /**
@@ -257,6 +269,9 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
         return $urls;
     }
 
+    /**
+     * @return Utility
+     */
     protected function getUtility()
     {
         return new Utility();
@@ -307,6 +322,8 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
 
     /**
      * @return void
+     *
+     * @todo write unit tests
      */
     protected function handlePdfExistsNot()
     {
@@ -326,6 +343,8 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
 
     /**
      * @return void
+     *
+     * @todo write unit tests
      */
     protected function offerPdfForDownload()
     {
