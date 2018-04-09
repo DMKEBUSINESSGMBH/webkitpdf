@@ -332,7 +332,10 @@ class Plugin extends \Tx_Rnbase_Frontend_Plugin
             'webkitpdf',
             array(
                 'Executed shell command' => $this->scriptCall,
-                'Output of shell command' => $this->scriptCallOutput
+                'Output of shell command' => $this->scriptCallOutput,
+                '$_GET' => \tx_rnbase_parameters::getGetParameters(),
+                '$_POST' => \tx_rnbase_parameters::getPostParameters(),
+                '$_SERVER' => $_SERVER,
             )
         );
 
