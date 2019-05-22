@@ -52,7 +52,7 @@ class RealUrlConfigurationReaderTest extends \tx_rnbase_tests_BaseTestCase
         $configurationReaderHook = \tx_rnbase::makeInstance(RealUrlConfigurationReader::class);
 
         $parameters = [];
-        $configurationReaderHook->addMWebkitpdfToBannedUrlsRegExp($parameters, $configurationReader);
+        $configurationReaderHook->addWebkitpdfToBannedUrlsRegExp($parameters, $configurationReader);
 
         self::assertContains('tx_solr|tx_webkitpdf_pi1', $parameters['configuration']['cache']['banUrlsRegExp']);
     }

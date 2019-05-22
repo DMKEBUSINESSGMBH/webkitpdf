@@ -20,6 +20,6 @@ Tx_Rnbase_Utility_Cache::addExcludedParametersForCacheHash(array(
 // realurl
 if (tx_rnbase_util_Extensions::isLoaded('realurl')) {
     $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['realurl']['ConfigurationReader_postProc']['webkitpdf'] =
-        \DMK\Mksearch\Hooks\RealUrlConfigurationReader::class.'->addMksearchToBannedUrlsRegExp';
+        \DMK\Webkitpdf\Hooks\RealUrlConfigurationReader::class.'->addWebkitpdfToBannedUrlsRegExp';
 }
 

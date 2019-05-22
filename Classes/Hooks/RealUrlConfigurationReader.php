@@ -40,7 +40,7 @@ class RealUrlConfigurationReader
      * @param array $parameters
      * @param ConfigurationReader $configurationReader
      */
-    public function addMWebkitpdfToBannedUrlsRegExp(array &$parameters, ConfigurationReader $configurationReader)
+    public function addWebkitpdfToBannedUrlsRegExp(array &$parameters, ConfigurationReader $configurationReader)
     {
         $parameters['configuration']['cache']['banUrlsRegExp'] =
             str_replace('tx_solr', 'tx_solr|tx_webkitpdf_pi1', $configurationReader->get('cache/banUrlsRegExp'));
