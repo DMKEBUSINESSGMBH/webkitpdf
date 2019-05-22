@@ -17,3 +17,9 @@ Tx_Rnbase_Utility_Cache::addExcludedParametersForCacheHash(array(
     // parameter added when a user is logged in
     'FE_SESSION_KEY'
 ));
+// realurl
+if (tx_rnbase_util_Extensions::isLoaded('realurl')) {
+    $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['realurl']['ConfigurationReader_postProc']['webkitpdf'] =
+        \DMK\Mksearch\Hooks\RealUrlConfigurationReader::class.'->addMksearchToBannedUrlsRegExp';
+}
+
