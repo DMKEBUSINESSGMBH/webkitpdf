@@ -5,6 +5,7 @@ namespace DMK\Webkitpdf\Tests;
 use DMK\Webkitpdf\Plugin;
 use DMK\Webkitpdf\Utility;
 use Nimut\TestingFramework\TestCase\UnitTestCase;
+use TYPO3\CMS\Core\Core\Environment;
 
 /***************************************************************
 *  Copyright notice
@@ -41,7 +42,7 @@ class PluginTest extends UnitTestCase
     /**
      * @var string
      */
-    protected $filename = PATH_site.'typo3temp/.webkitpdf.test';
+    protected $filename = '/typo3temp/.webkitpdf.test';
 
     /**
      * @var string
@@ -66,6 +67,7 @@ class PluginTest extends UnitTestCase
     protected function setUp(): void
     {
         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['webkitpdf']['debug'] = false;
+        $this->filename = Environment::getPublicPath().$this->filename;
     }
 
     /**
@@ -84,10 +86,6 @@ class PluginTest extends UnitTestCase
         }
         if (isset($_COOKIE['test2'])) {
             unset($_COOKIE['test2']);
-        }
-
-        if (isset($GLOBALS['TSFE']->loginUser)) {
-            unset($GLOBALS['TSFE']->loginUser);
         }
     }
 
@@ -228,14 +226,11 @@ class PluginTest extends UnitTestCase
         $expectedAllowedHostsForUtilityMethod
     ) {
         $utility = $this->getMockBuilder(Utility::class)
-            ->setMethods(['appendFESessionInfoToURL', 'sanitizeURL'])
+            ->setMethods(['sanitizeUrl'])
             ->getMock();
 
-        $utility->expects(self::never())
-            ->method('appendFESessionInfoToURL');
-
         $utility->expects(self::exactly(2))
-            ->method('sanitizeURL')
+            ->method('sanitizeUrl')
             ->withConsecutive(
                 ['firstUrl', $expectedAllowedHostsForUtilityMethod],
                 ['secondUrl', $expectedAllowedHostsForUtilityMethod],
@@ -268,7 +263,7 @@ class PluginTest extends UnitTestCase
     {
         return [
             ['example.com, example.org', ['example.com', 'example.org']],
-            ['', false],
+            ['', []],
         ];
     }
 

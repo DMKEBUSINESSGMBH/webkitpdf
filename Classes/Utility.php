@@ -38,29 +38,12 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 class Utility
 {
     /**
-     * Escapes a URI resource name so it can safely be used on the command line.
-     *
-     * @param   string  $inputName URI resource name to safeguard, must not be empty
-     *
-     * @return  string  $inputName escaped as needed
-     */
-    public function wrapUriName($inputName)
-    {
-        return escapeshellarg($inputName);
-    }
-
-    /**
      * Checks if the given URL's host matches the current host
      * and sanitizes the URL to be used on command line.
      *
-     * @param   string $url The URL to be sanitized
-     * @param   array $allowedHosts
-     *
-     * @return string The sanitized URL
-     *
      * @throws Exception
      */
-    public function sanitizeUrl($url, $allowedHosts)
+    public function sanitizeUrl(string $url, array $allowedHosts): string
     {
         // Make sure that host of the URL matches TYPO3 host or one of allowed hosts set in TypoScript.
         $parts = parse_url($url);
@@ -69,9 +52,8 @@ class Utility
                 throw new \Exception('Host "'.$parts['host'].'" does not match TYPO3 host.');
             }
         }
-        $url = $this->wrapUriName($url);
 
-        return $url;
+        return escapeshellarg($url);
     }
 
     public static function debugLogging(string $title, array $dataVar = []): void
@@ -81,34 +63,7 @@ class Utility
         }
     }
 
-    /**
-     * Makes sure that given path has a slash as first and last character.
-     *
-     * @param   string      $path: The path to be sanitized
-     *
-     * @return  Sanitized path
-     */
-    public static function sanitizePath($path, $trailingSlash = true)
-    {
-        // slash as last character
-        if ($trailingSlash && '/' !== substr($path, (strlen($path) - 1))) {
-            $path .= '/';
-        }
-
-        // slash as first character
-        if ('/' !== substr($path, 0, 1)) {
-            $path = '/'.$path;
-        }
-
-        return $path;
-    }
-
-    /**
-     * Generates a random hash.
-     *
-     * @return  The generated hash
-     */
-    public static function generateHash()
+    public static function generateHash(): string
     {
         $result = '';
         $charPool = '0123456789abcdefghijklmnopqrstuvwxyz';

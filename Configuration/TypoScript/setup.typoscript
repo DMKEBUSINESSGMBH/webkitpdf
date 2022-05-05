@@ -21,14 +21,7 @@ plugin.tx_webkitpdf_pi1 {
 }
 
 # Add HTTP response header "Content-Type" when serving PDF files
-[globalVar = TSFE:id = {$plugin.tx_webkitpdf_pi1.pdfLink.pluginPid}]
-config {
-    ### notation for TYPO3 6.2
-    additionalHeaders = Content-Type: application/pdf
-    ### notation since TYPO3 7.6
-    additionalHeaders {
-        10.header = Content-Type: application/pdf
-    }
-}
-[global]
+[page["uid"] == {$plugin.tx_webkitpdf_pi1.pdfLink.pluginPid}]
+    config.additionalHeaders.10.header = Content-Type: application/pdf
+[end]
 

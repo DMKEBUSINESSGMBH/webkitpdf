@@ -2,8 +2,8 @@
 
 namespace DMK\Webkitpdf;
 
-use Doctrine\DBAL\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /***************************************************************
@@ -48,9 +48,6 @@ class Cache
      */
     protected $isEnabled;
 
-    /**
-     * @param array $conf
-     */
     public function __construct(array $conf = [])
     {
         $this->conf = $conf;
@@ -64,10 +61,7 @@ class Cache
         }
     }
 
-    /**
-     * @return void
-     */
-    public function clearWebkitPdfCache()
+    public function clearWebkitPdfCache(): void
     {
         $now = time();
 
@@ -104,11 +98,6 @@ class Cache
         return $queryBuilder;
     }
 
-    /**
-     * @param string $urls
-     *
-     * @return bool
-     */
     public function isInCache(string $urls): bool
     {
         $found = false;
@@ -127,11 +116,7 @@ class Cache
         return $found;
     }
 
-    /**
-     * @param string $urls
-     * @param string $filename
-     */
-    public function store(string $urls, string $filename)
+    public function store(string $urls, string $filename): void
     {
         if ($this->isEnabled) {
             $this->getQueryBuilder()
@@ -145,11 +130,6 @@ class Cache
         }
     }
 
-    /**
-     * @param string $urls
-     *
-     * @return string
-     */
     public function get(string $urls): string
     {
         $filename = '';
@@ -169,9 +149,6 @@ class Cache
         return $filename;
     }
 
-    /**
-     * @return bool
-     */
     public function isCachingEnabled(): bool
     {
         return $this->isEnabled;
