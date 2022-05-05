@@ -14,7 +14,7 @@
         }
     ],
     "support": {
-        "email": "dev@dmk-ebusiness.de",
+        "email": "dev@dmk-ebusiness.com",
         "source": "https://github.com/DMKEBUSINESSGMBH/webkitpdf",
         "issues": "https://github.com/DMKEBUSINESSGMBH/webkitpdf/issues"
     },
@@ -22,12 +22,92 @@
         "typo3-ter/webkitpdf": "self.version"
     },
     "require" : {
-        "typo3/cms" : ">=8.7.0 <=8.7.99",
-        "typo3-ter/rn-base" : ">=1.4.5",
-        "php": ">=7.1.0"
+        "php": "^7.4 || ^8.0",
+        "typo3/cms-core": "^10.4.25 || ^11.5.7"
     },
     "autoload": {
         "psr-4": {"DMK\\Webkitpdf\\" : "Classes"}
+    },
+    "require-dev": {
+        "php-parallel-lint/php-parallel-lint": "^1.2",
+        "phpcompatibility/php-compatibility": "^9.3.5",
+        "nimut/testing-framework": "^6.0",
+        "friendsofphp/php-cs-fixer": "^3.3"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "DMK\\Webkitpdf\\Tests\\" : "Tests/",
+            "TYPO3\\CMS\\Core\\Tests\\": ".Build/vendor/typo3/cms/typo3/sysext/core/Tests/",
+            "TYPO3\\CMS\\Fluid\\Tests\\": ".Build/vendor/typo3/cms/typo3/sysext/fluid/Tests/"
+        }
+    },
+    "config": {
+        "vendor-dir": ".Build/vendor",
+        "bin-dir": ".Build/bin",
+        "preferred-install": {
+            "typo3/cms": "source"
+        },
+        "allow-plugins": {
+            "typo3/class-alias-loader": true,
+            "typo3/cms-composer-installers": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "mkdir -p .Build/Web/typo3conf/ext/",
+            "[ -L .Build/Web/typo3conf/ext/webkitpdf ] || ln -snvf ../../../../. .Build/Web/typo3conf/ext/webkitpdf"
+        ],
+        "lint:php": [
+            "[ -e .Build/bin/parallel-lint ] || composer update",
+            ".Build/bin/parallel-lint ./Classes"
+        ],
+        "lint": [
+            "@lint:php"
+        ],
+        "test:phpcs": [
+            "[ -e .Build/bin/php-cs-fixer ] || composer update --ansi",
+            ".Build/bin/php-cs-fixer fix -v --dry-run --diff --ansi"
+        ],
+        "test:phpcompatibility": [
+            "@test:phpcompatibility:7.4",
+            "@test:phpcompatibility:8.0"
+        ],
+        "test:phpcompatibility:7.4": [
+            "[ -e .Build/bin/phpcs ] || composer update",
+            ".Build/bin/phpcs --ignore=.Build/* -p . --standard=.Build/vendor/phpcompatibility/php-compatibility/PHPCompatibility --runtime-set testVersion 7.4"
+        ],
+        "test:phpcompatibility:8.0": [
+            "[ -e .Build/bin/phpcs ] || composer update",
+            ".Build/bin/phpcs --ignore=.Build/* -p . --standard=.Build/vendor/phpcompatibility/php-compatibility/PHPCompatibility --runtime-set testVersion 8.0"
+        ],
+        "test:phpunit": [
+            "[ -e .Build/bin/phpunit ] || composer update --ansi",
+            "export TYPO3_PATH_WEB=$PWD/.Build/Web && .Build/bin/phpunit -c .Build/vendor/nimut/testing-framework/res/Configuration/UnitTests.xml Tests/"
+        ],
+        "test": [
+            "@test:phpcs",
+            "@test:phpcompatibility",
+            "@test:phpunit"
+        ],
+        "fix:phpcs": [
+            "[ -e .Build/bin/php-cs-fixer ] || composer update --ansi",
+            ".Build/bin/php-cs-fixer fix -v"
+        ],
+        "fix": [
+            "@fix:phpcs"
+        ]
+    },
+    "extra": {
+        "branch-alias" : {
+            "dev-11.5": "11.0.x-dev"
+        },
+        "typo3/cms": {
+            "cms-package-dir": "{$vendor-dir}/typo3/cms",
+            "extension-key": "webkitpdf",
+            "web-dir": ".Build/Web",
+            "app-dir": ".Build"
+        }
     }
 }
 

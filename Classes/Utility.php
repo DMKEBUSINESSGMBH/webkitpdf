@@ -1,5 +1,9 @@
 <?php
+
 namespace DMK\Webkitpdf;
+
+use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /***************************************************************
  *  Copyright notice
@@ -25,21 +29,19 @@ namespace DMK\Webkitpdf;
  ***************************************************************/
 
 /**
- * DMK\Webkitpdf$Utility
+ * DMK\Webkitpdf$Utility.
  *
- * @package         TYPO3
- * @subpackage      webkitpdf
  * @author          Hannes Bochmann
  * @license         http://www.gnu.org/licenses/lgpl.html
  *                  GNU Lesser General Public License, version 3 or later
  */
 class Utility
 {
-
     /**
      * Escapes a URI resource name so it can safely be used on the command line.
      *
      * @param   string  $inputName URI resource name to safeguard, must not be empty
+     *
      * @return  string  $inputName escaped as needed
      */
     public function wrapUriName($inputName)
@@ -55,16 +57,16 @@ class Utility
      * @param   array $allowedHosts
      *
      * @return string The sanitized URL
+     *
      * @throws Exception
      */
-    public function sanitizeURL($url, $allowedHosts)
+    public function sanitizeUrl($url, $allowedHosts)
     {
-
-        //Make sure that host of the URL matches TYPO3 host or one of allowed hosts set in TypoScript.
+        // Make sure that host of the URL matches TYPO3 host or one of allowed hosts set in TypoScript.
         $parts = parse_url($url);
-        if ($parts['host'] !== \tx_rnbase_util_Misc::getIndpEnv('TYPO3_HOST_ONLY')) {
+        if ($parts['host'] !== GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY')) {
             if (($allowedHosts && !in_array($parts['host'], $allowedHosts)) || !$allowedHosts) {
-                throw new \Exception('Host "' . $parts['host'] . '" does not match TYPO3 host.');
+                throw new \Exception('Host "'.$parts['host'].'" does not match TYPO3 host.');
             }
         }
         $url = $this->wrapUriName($url);
@@ -72,77 +74,37 @@ class Utility
         return $url;
     }
 
-    /**
-     * Appends information about the FE user session to the URL.
-     * This is used to be able to generate PDFs of access restricted pages.
-     *
-     * @param   string  $url The URL to append the parameters to
-     * @return  string  The processed URL
-     */
-    public function appendFESessionInfoToURL($url)
+    public static function debugLogging(string $title, array $dataVar = []): void
     {
-        if (strpos($url, '?') !== false) {
-            $url .= '&';
-        } else {
-            $url .= '?';
-        }
-
-        $url .= 'FE_SESSION_KEY=' .
-                rawurlencode(
-                    $GLOBALS['TSFE']->fe_user->id .
-                    '-' .
-                    md5(
-                        $GLOBALS['TSFE']->fe_user->id .
-                        '/' .
-                        $GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey']
-                    )
-                );
-
-        return $url;
-    }
-
-    /**
-     * Writes log messages to devLog
-     *
-     * Acts as a wrapper for tx_rnbase_util_Logger::devLog()
-     * Additionally checks if debug was activated
-     *
-     * @param   string      $title: title of the event
-     * @param   string      $severity: severity of the debug event
-     * @param   array       $dataVar: additional data
-     * @return  void
-     */
-    public static function debugLogging($title, $severity = -1, $dataVar = array())
-    {
-        if ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['webkitpdf']['debug'] === 1) {
-            \tx_rnbase_util_Logger::devlog($title, 'webkitpdf', $severity, $dataVar);
+        if (1 === $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['webkitpdf']['debug']) {
+            GeneralUtility::makeInstance(LogManager::class)->getLogger('webkitpdf')->debug($title, $dataVar);
         }
     }
 
     /**
-     * Makes sure that given path has a slash as first and last character
+     * Makes sure that given path has a slash as first and last character.
      *
      * @param   string      $path: The path to be sanitized
+     *
      * @return  Sanitized path
      */
     public static function sanitizePath($path, $trailingSlash = true)
     {
-
         // slash as last character
-        if ($trailingSlash && substr($path, (strlen($path) - 1)) !== '/') {
+        if ($trailingSlash && '/' !== substr($path, (strlen($path) - 1))) {
             $path .= '/';
         }
 
-        //slash as first character
-        if (substr($path, 0, 1) !== '/') {
-            $path = '/' . $path;
+        // slash as first character
+        if ('/' !== substr($path, 0, 1)) {
+            $path = '/'.$path;
         }
 
         return $path;
     }
 
     /**
-     * Generates a random hash
+     * Generates a random hash.
      *
      * @return  The generated hash
      */
@@ -150,7 +112,7 @@ class Utility
     {
         $result = '';
         $charPool = '0123456789abcdefghijklmnopqrstuvwxyz';
-        for ($p = 0; $p < 15; $p++) {
+        for ($p = 0; $p < 15; ++$p) {
             $result .= $charPool[mt_rand(0, strlen($charPool) - 1)];
         }
 

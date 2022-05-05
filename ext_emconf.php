@@ -10,7 +10,7 @@
  * writing. "version" and "dependencies" must not be touched!
  ***************************************************************/
 
-$EM_CONF[$_EXTKEY] = array (
+$EM_CONF['webkitpdf'] = [
     'title' => 'Webkit PDFs',
     'description' => 'Generate PDF files using WebKit rendering engine.',
     'category' => 'plugin',
@@ -23,25 +23,20 @@ $EM_CONF[$_EXTKEY] = array (
     'module' => '',
     'state' => 'beta',
     'uploadfolder' => 0,
-    'createDirs' => 'typo3temp/tx_webkitpdf/',
+    'createDirs' => '',
     'modify_tables' => '',
     'clearcacheonload' => 0,
     'lockType' => '',
-    'author' => 'Dev-Team Typoheads',
-    'author_email' => 'dev@typoheads.at',
-    'author_company' => 'Typoheads GmbH',
+    'author' => 'DMK E-BUSINESS GmbH',
+    'author_email' => 'dev@dmk-ebusiness.com',
+    'author_company' => 'DMK E-BUSINESS GmbH',
     'CGLcompliance' => null,
     'CGLcompliance_note' => null,
-    'constraints' =>
-    array (
-        'depends' =>
-        array (
-        ),
-        'conflicts' =>
-        array (
-        ),
-        'suggests' =>
-        array (
-        ),
-    ),
-);
+    'constraints' => [
+        'depends' => [
+            'typo3' => '10.4.25-11.5.99',
+        ],
+        'conflicts' => [],
+        'suggests' => [],
+    ],
+];
