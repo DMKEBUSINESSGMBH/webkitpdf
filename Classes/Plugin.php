@@ -387,7 +387,7 @@ class Plugin extends AbstractPlugin
     protected function addSlashesToPath(string $path, bool $trailingSlash = true): string
     {
         // slash as last character
-        if ($trailingSlash && '/' !== substr($path, (strlen($path) - 1))) {
+        if ($trailingSlash && '/' !== substr($path, strlen($path) - 1)) {
             $path .= '/';
         }
 
