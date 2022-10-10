@@ -184,7 +184,7 @@ class Plugin extends AbstractPlugin
 
     protected function makeSureNotMoreUrlsAreProcessedThanAllowed(): void
     {
-        if (is_array($this->piVars[$this->paramName])) {
+        if (is_array($this->piVars[$this->paramName] ?? null)) {
             $this->piVars[$this->paramName] = array_slice(
                 $this->piVars[$this->paramName],
                 0,
