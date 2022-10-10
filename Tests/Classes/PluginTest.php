@@ -219,6 +219,7 @@ class PluginTest extends UnitTestCase
      * @param array || boolean $expectedAllowedHostsForUtilityMethod
      *
      * @group unit
+     *
      * @dataProvider dataProviderSanitizeUrls
      */
     public function testSanitizeUrlsWithoutFrontendUser(
