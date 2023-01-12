@@ -21,7 +21,7 @@ plugin.tx_webkitpdf_pi1 {
 }
 
 # Add HTTP response header "Content-Type" when serving PDF files
-[{$plugin.tx_webkitpdf_pi1.pdfLink.pluginPid} && page && page["uid"] == {$plugin.tx_webkitpdf_pi1.pdfLink.pluginPid}]
+["{$plugin.tx_webkitpdf_pi1.pdfLink.pluginPid}" && page && page["uid"] == "{$plugin.tx_webkitpdf_pi1.pdfLink.pluginPid}"]
     config.additionalHeaders.10.header = Content-Type: application/pdf
 [end]
 
