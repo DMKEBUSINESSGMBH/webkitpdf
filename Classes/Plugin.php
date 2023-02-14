@@ -208,12 +208,12 @@ class Plugin extends AbstractPlugin
 
     protected function getUrls(): array
     {
-        $urls = $this->piVars[$this->paramName] ?? '';
+        $urls = $this->piVars[$this->paramName] ?? [];
         if (!$urls) {
             if (isset($this->conf['urls.'])) {
                 $urls = $this->conf['urls.'];
             } else {
-                $urls = [$this->conf['urls']];
+                $urls = $this->conf['urls'] ? [$this->conf['urls']] : [];
             }
         }
 
