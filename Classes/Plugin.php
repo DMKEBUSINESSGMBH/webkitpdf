@@ -305,6 +305,11 @@ class Plugin extends AbstractPlugin
      */
     protected function offerPdfForDownload(): void
     {
+        if (!$this->cacheManager->isCachingEnabled()) {
+            header('Expires: 0');
+            header('Pragma: no-cache');
+            header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+        }
         header('Content-type: application/pdf');
         header('Content-Transfer-Encoding: Binary');
         header('Content-Length: '.filesize($this->filename));
@@ -411,8 +416,8 @@ class Plugin extends AbstractPlugin
                 }
             }
 
-            if (('.' === substr($key, -1) && !array_key_exists(substr($key, 0, -1), $tsSettings)) ||
-                ('.' !== substr($key, -1) && array_key_exists($key.'.', $tsSettings)) && !strstr($key, 'scriptParams')) {
+            if (('.' === substr($key, -1) && !array_key_exists(substr($key, 0, -1), $tsSettings))
+                || ('.' !== substr($key, -1) && array_key_exists($key.'.', $tsSettings)) && !strstr($key, 'scriptParams')) {
                 $tsSettings[$key] = $this->cObj->stdWrap($value, $tsSettings[$key.'.']);
 
                 // Remove the additional TS properties after processing, otherwise they'll be translated to pdf properties
