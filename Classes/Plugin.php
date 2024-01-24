@@ -213,7 +213,7 @@ class Plugin extends AbstractPlugin
             if (isset($this->conf['urls.'])) {
                 $urls = $this->conf['urls.'];
             } else {
-                $urls = $this->conf['urls'] ? [$this->conf['urls']] : [];
+                $urls = ($this->conf['urls'] ?? null) ? [$this->conf['urls']] : [];
             }
         }
 
