@@ -1,40 +1,43 @@
 <?php
 
-/***************************************************************
- * Extension Manager/Repository config file for ext "webkitpdf".
+/*
+ * Copyright notice
  *
- * Auto generated 04-01-2013 14:15
+ * (c) DMK E-BUSINESS GmbH <dev@dmk-ebusiness.de>
+ * All rights reserved
  *
- * Manual updates:
- * Only the data in the array - everything else is removed by next
- * writing. "version" and "dependencies" must not be touched!
- ***************************************************************/
+ * This file is part of the "webkitpdf" Extension for TYPO3 CMS.
+ *
+ * This script is part of the TYPO3 project. The TYPO3 project is
+ * free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * GNU Lesser General Public License can be found at
+ * www.gnu.org/licenses/lgpl.html
+ *
+ * This script is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * This copyright notice MUST APPEAR in all copies of the script!
+ */
 
 $EM_CONF['webkitpdf'] = [
     'title' => 'Webkit PDFs',
     'description' => 'Generate PDF files using WebKit rendering engine.',
     'category' => 'plugin',
-    'shy' => 0,
     'version' => '11.0.2',
-    'dependencies' => '',
-    'conflicts' => '',
-    'priority' => '',
-    'loadOrder' => '',
-    'module' => '',
     'state' => 'beta',
-    'uploadfolder' => 0,
-    'createDirs' => '',
-    'modify_tables' => '',
     'clearcacheonload' => 0,
-    'lockType' => '',
     'author' => 'DMK E-BUSINESS GmbH',
     'author_email' => 'dev@dmk-ebusiness.com',
     'author_company' => 'DMK E-BUSINESS GmbH',
-    'CGLcompliance' => null,
-    'CGLcompliance_note' => null,
     'constraints' => [
         'depends' => [
-            'typo3' => '10.4.25-11.5.99',
+            'typo3' => '12.4.0-13.4.99',
         ],
         'conflicts' => [],
         'suggests' => [],

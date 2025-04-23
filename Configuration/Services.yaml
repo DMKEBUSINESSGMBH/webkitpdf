@@ -1,0 +1,11 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    DMK\Webkitpdf\:
+        resource: '../Classes/*'
+
+    DMK\Webkitpdf\Plugin:
+        public: true

@@ -1,7 +1,34 @@
 <?php
 
+/*
+ * Copyright notice
+ *
+ * (c) DMK E-BUSINESS GmbH <dev@dmk-ebusiness.de>
+ * All rights reserved
+ *
+ * This file is part of the "webkitpdf" Extension for TYPO3 CMS.
+ *
+ * This script is part of the TYPO3 project. The TYPO3 project is
+ * free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * GNU Lesser General Public License can be found at
+ * www.gnu.org/licenses/lgpl.html
+ *
+ * This script is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * This copyright notice MUST APPEAR in all copies of the script!
+ */
+
 namespace DMK\Webkitpdf;
 
+use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -39,28 +66,28 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 class Cache
 {
     /**
-     * @var array
-     */
-    protected $conf;
-
-    /**
      * @var bool
      */
-    protected $isEnabled;
+    protected $isEnabled = true;
 
-    public function __construct(array $conf = [])
+    /**
+     * @SuppressWarnings("PHPMD.Superglobals")
+     */
+    public function __construct(protected array $conf = [])
     {
-        $this->conf = $conf;
-        $this->isEnabled = true;
         $minutes = $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['webkitpdf']['cacheThreshold'] ?? 0;
         if (0 === intval($minutes)) {
             $this->isEnabled = false;
         }
+
         if (1 === intval($this->conf['disableCache'] ?? 0)) {
             $this->isEnabled = false;
         }
     }
 
+    /**
+     * @SuppressWarnings("PHPMD.Superglobals")
+     */
     public function clearWebkitPdfCache(): void
     {
         $now = time();
@@ -71,21 +98,18 @@ class Cache
 
         $queryBuilder = $this->getQueryBuilder();
         $queryBuilder->where(
-            $queryBuilder->expr()->lt('crdate', $queryBuilder->createNamedParameter($threshold, \PDO::PARAM_INT))
+            $queryBuilder->expr()->lt('crdate', $queryBuilder->createNamedParameter($threshold, Connection::PARAM_INT))
         );
         $deleteQueryBuilder = clone $queryBuilder;
         $result = $queryBuilder
-            ->select('filename')
-            ->from('tx_webkitpdf_cache')
-            ->execute();
+            ->select('filename')->from('tx_webkitpdf_cache')->executeQuery();
         while ($row = $result->fetchAssociative()) {
             if (file_exists($row['filename'])) {
                 unlink($row['filename']);
             }
         }
-        $deleteQueryBuilder
-            ->delete('tx_webkitpdf_cache')
-            ->execute();
+
+        $deleteQueryBuilder->delete('tx_webkitpdf_cache')->executeStatement();
 
         Utility::debugLogging('Clearing cached files older than '.$minutes.' minutes.');
     }
@@ -107,9 +131,9 @@ class Cache
                 ->select('uid')
                 ->from('tx_webkitpdf_cache')
                 ->where(
-                    $queryBuilder->expr()->eq('urls', $queryBuilder->createNamedParameter(md5($urls), \PDO::PARAM_STR))
+                    $queryBuilder->expr()->eq('urls', $queryBuilder->createNamedParameter(md5($urls), Connection::PARAM_STR))
                 )
-                ->execute();
+                ->executeQuery();
             $found = $result->rowCount() > 0;
         }
 
@@ -122,11 +146,11 @@ class Cache
             $this->getQueryBuilder()
                 ->insert('tx_webkitpdf_cache')
                 ->values([
-                    'crdate' => $GLOBALS['EXEC_TIME'],
+                    'crdate' => GeneralUtility::makeInstance(Context::class)->getPropertyFromAspect('date', 'timestamp'),
                     'filename' => $filename,
                     'urls' => md5($urls),
                 ])
-                ->execute();
+                ->executeStatement();
         }
     }
 
@@ -139,10 +163,10 @@ class Cache
                 ->select('filename')
                 ->from('tx_webkitpdf_cache')
                 ->where(
-                    $queryBuilder->expr()->eq('urls', $queryBuilder->createNamedParameter(md5($urls), \PDO::PARAM_STR))
+                    $queryBuilder->expr()->eq('urls', $queryBuilder->createNamedParameter(md5($urls), Connection::PARAM_STR))
                 )
                 ->setMaxResults(1)
-                ->execute();
+                ->executeQuery();
             $filename = $result->fetchOne() ?? '';
         }
 

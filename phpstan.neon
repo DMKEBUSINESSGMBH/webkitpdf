@@ -1,0 +1,23 @@
+parameters:
+    level: 5
+    bootstrapFiles:
+        - "%currentWorkingDirectory%/.Build/vendor/autoload.php"
+    paths:
+        - %currentWorkingDirectory%/Classes
+        - %currentWorkingDirectory%/ext_localconf.php
+        - %currentWorkingDirectory%/ext_emconf.php
+    excludePaths:
+        - %currentWorkingDirectory%/Classes/Updates/DMKWebkitpdfCTypeMigration.php
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        -
+            message: '#^Class DMK\\Webkitpdf\\Plugin has an uninitialized readonly property \$contentObjectRenderer\. Assign it in the constructor\.$#'
+            identifier: property.uninitializedReadonly
+            count: 1
+            path: Classes/Plugin.php
+
+        -
+            message: '#^Readonly property DMK\\Webkitpdf\\Plugin\:\:\$contentObjectRenderer is assigned outside of the constructor\.$#'
+            identifier: property.readOnlyAssignNotInConstructor
+            count: 1
+            path: Classes/Plugin.php

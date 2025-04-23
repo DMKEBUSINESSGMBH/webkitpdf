@@ -1,14 +1,42 @@
 <?php
 
+/*
+ * Copyright notice
+ *
+ * (c) DMK E-BUSINESS GmbH <dev@dmk-ebusiness.de>
+ * All rights reserved
+ *
+ * This file is part of the "webkitpdf" Extension for TYPO3 CMS.
+ *
+ * This script is part of the TYPO3 project. The TYPO3 project is
+ * free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * GNU Lesser General Public License can be found at
+ * www.gnu.org/licenses/lgpl.html
+ *
+ * This script is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * This copyright notice MUST APPEAR in all copies of the script!
+ */
+
 namespace DMK\Webkitpdf;
 
+use Psr\Http\Message\ServerRequestInterface;
+use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Http\ImmediateResponseException;
 use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Frontend\Controller\ErrorController;
-use TYPO3\CMS\Frontend\Plugin\AbstractPlugin;
 
 /***************************************************************
  *  Copyright notice
@@ -39,21 +67,15 @@ use TYPO3\CMS\Frontend\Plugin\AbstractPlugin;
  * @author          Hannes Bochmann
  * @license         http://www.gnu.org/licenses/lgpl.html
  *                  GNU Lesser General Public License, version 3 or later
+ *
+ * @SuppressWarnings("PHPMD.ExcessiveClassComplexity")
  */
-class Plugin extends AbstractPlugin
+class Plugin
 {
-    /**
-     * @var string
-     */
-    public $prefixId = 'tx_webkitpdf_pi1';
+    protected array $requestParameters;
 
     /**
-     * @var string
-     */
-    public $extKey = 'webkitpdf';
-
-    /**
-     * @var \DMK\Webkitpdf\Cache
+     * @var Cache
      */
     protected $cacheManager;
 
@@ -70,7 +92,7 @@ class Plugin extends AbstractPlugin
     /**
      * @var string
      */
-    protected $paramName;
+    protected $requestParameterName;
 
     /**
      * @var string
@@ -93,16 +115,33 @@ class Plugin extends AbstractPlugin
     protected $scriptCall;
 
     /**
-     * @var string
+     * @var array
      */
     protected $scriptCallOutput;
 
-    public function main(string $content, array $conf): string
+    protected array $conf;
+
+    protected readonly ContentObjectRenderer $contentObjectRenderer;
+
+    public function __construct(
+        private readonly Context $context,
+    ) {
+    }
+
+    public function setContentObjectRenderer(ContentObjectRenderer $contentObjectRenderer): void
     {
-        $this->init($conf);
+        $this->contentObjectRenderer = $contentObjectRenderer;
+    }
+
+    /**
+     * @SuppressWarnings("PHPMD.UnusedFormalParameter")
+     */
+    public function main(string $content, array $conf, ServerRequestInterface $request): string
+    {
+        $this->init($conf, $request);
         $urls = $this->getUrls();
 
-        if (!empty($urls) && count($urls) > 0) {
+        if ([] !== $urls) {
             $urls = $this->sanitizeUrls($urls);
 
             $this->initializeFileNameToOfferAsDownload($urls);
@@ -111,18 +150,21 @@ class Plugin extends AbstractPlugin
                 return $this->filename;
             }
 
-            if (!$this->pdfExists()) {
-                $this->handlePdfExistsNot();
-            } else {
+            if ($this->pdfExists()) {
                 $this->offerPdfForDownload();
             }
+
+            $this->handlePdfExistsNot();
         }
 
-        return $this->pi_wrapInBaseClass('');
+        return '';
     }
 
-    protected function init(array $conf): void
+    protected function init(array $conf, ServerRequestInterface $request): void
     {
+        $this->requestParameters = $request->getQueryParams()['tx_webkitpdf_pi1'] ?? [];
+        ArrayUtility::mergeRecursiveWithOverrule($this->requestParameters, $request->getParsedBody()['tx_webkitpdf_pi1'] ?? []);
+
         // Process stdWrap properties
         $temp = $conf['scriptParams.'] ?? '';
         unset($conf['scriptParams.']);
@@ -131,12 +173,12 @@ class Plugin extends AbstractPlugin
             $this->conf['scriptParams'] = $this->processStdWraps($temp);
         }
 
-        $this->pi_setPiVarDefaults();
-
-        $this->scriptPath = $this->addSlashesToPath(
-            $this->conf['customScriptPath'] ?? ExtensionManagementUtility::extPath('webkitpdf').'Resources/Private/Binaries/'
+        $this->scriptPath = $this->surroundWithSlashes(
+            GeneralUtility::getFileAbsFileName(
+                $this->conf['customScriptPath'] ?? ExtensionManagementUtility::extPath('webkitpdf').'Resources/Private/Binaries/'
+            )
         );
-        $this->outputPath = $this->addSlashesToPath(
+        $this->outputPath = $this->surroundWithSlashes(
             Environment::getPublicPath().($this->conf['customTempOutputPath'] ?? '/typo3temp/tx_webkitpdf/')
         );
 
@@ -144,9 +186,9 @@ class Plugin extends AbstractPlugin
             GeneralUtility::mkdir_deep($this->outputPath);
         }
 
-        $this->paramName = 'urls';
+        $this->requestParameterName = 'urls';
         if ($this->conf['customParameterName'] ?? '') {
-            $this->paramName = $this->conf['customParameterName'];
+            $this->requestParameterName = $this->conf['customParameterName'];
         }
 
         $this->filename = $this->outputPath.($this->conf['filePrefix'] ?? '').Utility::generateHash().'.pdf';
@@ -184,19 +226,23 @@ class Plugin extends AbstractPlugin
 
     protected function makeSureNotMoreUrlsAreProcessedThanAllowed(): void
     {
-        if (is_array($this->piVars[$this->paramName] ?? null)) {
-            $this->piVars[$this->paramName] = array_slice(
-                $this->piVars[$this->paramName],
+        if (is_array($this->requestParameters[$this->requestParameterName] ?? null)) {
+            $this->requestParameters[$this->requestParameterName] = array_slice(
+                $this->requestParameters[$this->requestParameterName],
                 0,
                 intval($this->conf['numberOfUrlsAllowedToProcess'])
             );
         }
     }
 
+    /**
+     * @SuppressWarnings("PHPMD.ElseExpression")
+     * @SuppressWarnings("PHPMD.Superglobals")
+     */
     protected function initializeFileNameToOfferAsDownload(array $urls): void
     {
         $originalUrls = implode(' ', $urls);
-        if ($GLOBALS['TSFE']->getContext()->getAspect('frontend.user')->isLoggedIn()
+        if ($this->context->getAspect('frontend.user')->isLoggedIn()
             || !$this->cacheManager->isInCache($originalUrls)
             || '1' === ($this->conf['debugScriptCall'] ?? false)
         ) {
@@ -208,16 +254,9 @@ class Plugin extends AbstractPlugin
 
     protected function getUrls(): array
     {
-        $urls = $this->piVars[$this->paramName] ?? [];
-        if (!$urls) {
-            if (isset($this->conf['urls.'])) {
-                $urls = $this->conf['urls.'];
-            } else {
-                $urls = ($this->conf['urls'] ?? null) ? [$this->conf['urls']] : [];
-            }
-        }
-
-        return $urls;
+        return $this->requestParameters[$this->requestParameterName]
+            ?? $this->conf['urls.']
+            ?? ($this->conf['urls'] ? [$this->conf['urls']] : []);
     }
 
     protected function sanitizeUrls(array $urls): array
@@ -278,6 +317,8 @@ class Plugin extends AbstractPlugin
 
     /**
      * @todo write unit tests
+     *
+     * @SuppressWarnings("PHPMD.Superglobals")
      */
     protected function handlePdfExistsNot(): void
     {
@@ -302,6 +343,8 @@ class Plugin extends AbstractPlugin
 
     /**
      * @todo write unit tests
+     *
+     * @SuppressWarnings("PHPMD.ExitExpression")
      */
     protected function offerPdfForDownload(): void
     {
@@ -310,6 +353,7 @@ class Plugin extends AbstractPlugin
             header('Pragma: no-cache');
             header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
         }
+
         header('Content-type: application/pdf');
         header('Content-Transfer-Encoding: Binary');
         header('Content-Length: '.filesize($this->filename));
@@ -346,15 +390,19 @@ class Plugin extends AbstractPlugin
         $finalSettings = [];
         foreach ($tsSettings as $param => $value) {
             $value = trim($value);
-            if ('--' !== substr($param, 0, 2)) {
+            if (!str_starts_with($param, '--')) {
                 $param = '--'.$param;
             }
+
             $finalSettings[$param] = $value;
         }
 
         return $finalSettings;
     }
 
+    /**
+     * @SuppressWarnings("PHPMD.Superglobals")
+     */
     protected function buildScriptOptions(): string
     {
         $options = [];
@@ -367,7 +415,7 @@ class Plugin extends AbstractPlugin
         }
 
         if ($this->conf['additionalStylesheet'] ?? '') {
-            $this->conf['additionalStylesheet'] = $this->addSlashesToPath($this->conf['additionalStylesheet'], false);
+            $this->conf['additionalStylesheet'] = $this->prefixWithSlash($this->conf['additionalStylesheet']);
             $options['--user-style-sheet'] = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST').$this->conf['additionalStylesheet'];
         }
 
@@ -379,6 +427,7 @@ class Plugin extends AbstractPlugin
             if (strlen($value) > 0) {
                 $value = escapeshellarg($value);
             }
+
             $paramsString .= ' '.$param.' '.$value;
         }
 
@@ -389,16 +438,19 @@ class Plugin extends AbstractPlugin
         return $paramsString;
     }
 
-    protected function addSlashesToPath(string $path, bool $trailingSlash = true): string
+    protected function surroundWithSlashes(string $path): string
     {
-        // slash as last character
-        if ($trailingSlash && '/' !== substr($path, strlen($path) - 1)) {
+        if (!str_ends_with($path, '/')) {
             $path .= '/';
         }
 
-        // slash as first character
-        if ('/' !== substr($path, 0, 1)) {
-            $path = '/'.$path;
+        return $this->prefixWithSlash($path);
+    }
+
+    protected function prefixWithSlash(string $path): string
+    {
+        if (!str_starts_with($path, '/')) {
+            return '/'.$path;
         }
 
         return $path;
@@ -408,17 +460,22 @@ class Plugin extends AbstractPlugin
     {
         // Get TS values and process stdWrap properties
         foreach ($tsSettings as $key => $value) {
-            $process = true;
-            if ('.' === substr($key, -1)) {
+            if (str_ends_with($key, '.')) {
                 $key = substr($key, 0, -1);
-                if (array_key_exists($key, $tsSettings)) {
-                    $process = false;
-                }
             }
 
-            if (('.' === substr($key, -1) && !array_key_exists(substr($key, 0, -1), $tsSettings))
-                || ('.' !== substr($key, -1) && array_key_exists($key.'.', $tsSettings)) && !strstr($key, 'scriptParams')) {
-                $tsSettings[$key] = $this->cObj->stdWrap($value, $tsSettings[$key.'.']);
+            if (
+                (
+                    str_ends_with($key, '.')
+                    && !array_key_exists(substr($key, 0, -1), $tsSettings)
+                )
+                || (
+                    !str_ends_with($key, '.')
+                    && array_key_exists($key.'.', $tsSettings)
+                )
+                && !str_contains($key, 'scriptParams')
+            ) {
+                $tsSettings[$key] = $this->contentObjectRenderer->stdWrap($value, $tsSettings[$key.'.']);
 
                 // Remove the additional TS properties after processing, otherwise they'll be translated to pdf properties
                 if (isset($tsSettings[$key.'.'])) {

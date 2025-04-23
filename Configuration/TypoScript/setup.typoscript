@@ -1,3 +1,4 @@
+plugin.tx_webkitpdf_pi1 = USER_INT
 plugin.tx_webkitpdf_pi1 {
     userFunc = DMK\Webkitpdf\Plugin->main
     pdfLink = TEXT
@@ -25,3 +26,8 @@ plugin.tx_webkitpdf_pi1 {
     config.additionalHeaders.10.header = Content-Type: application/pdf
 [end]
 
+tt_content.webkitpdf =< lib.contentElement
+tt_content.webkitpdf {
+    templateName = Generic
+    20 =< plugin.tx_webkitpdf_pi1
+}

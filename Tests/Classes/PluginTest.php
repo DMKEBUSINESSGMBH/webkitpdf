@@ -1,11 +1,39 @@
 <?php
 
+/*
+ * Copyright notice
+ *
+ * (c) DMK E-BUSINESS GmbH <dev@dmk-ebusiness.de>
+ * All rights reserved
+ *
+ * This file is part of the "webkitpdf" Extension for TYPO3 CMS.
+ *
+ * This script is part of the TYPO3 project. The TYPO3 project is
+ * free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * GNU Lesser General Public License can be found at
+ * www.gnu.org/licenses/lgpl.html
+ *
+ * This script is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * This copyright notice MUST APPEAR in all copies of the script!
+ */
+
 namespace DMK\Webkitpdf\Tests;
 
+use DMK\Webkitpdf\Cache;
 use DMK\Webkitpdf\Plugin;
 use DMK\Webkitpdf\Utility;
-use Nimut\TestingFramework\TestCase\UnitTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Core\Environment;
+use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
 /***************************************************************
 *  Copyright notice
@@ -55,35 +83,33 @@ class PluginTest extends UnitTestCase
     protected $scriptCallOutput;
 
     /**
-     * @var string
+     * @var ServerRequestInterface
      */
-    private $userEmail = 'tegutcrm@dmkdev.de';
+    protected \PHPUnit\Framework\MockObject\MockObject $request;
 
     /**
-     * {@inheritDoc}
-     *
      * @see PHPUnit_Framework_TestCase::setUp()
      */
     protected function setUp(): void
     {
         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['webkitpdf']['debug'] = false;
         $this->filename = Environment::getPublicPath().$this->filename;
+        $this->request = $this->createMock(ServerRequestInterface::class);
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @see PHPUnit_Framework_TestCase::tearDown()
      */
     protected function tearDown(): void
     {
-        if (true === file_exists($this->filename)) {
+        if (file_exists($this->filename)) {
             unlink($this->filename);
         }
 
         if (isset($_COOKIE['test1'])) {
             unset($_COOKIE['test1']);
         }
+
         if (isset($_COOKIE['test2'])) {
             unset($_COOKIE['test2']);
         }
@@ -92,126 +118,134 @@ class PluginTest extends UnitTestCase
     /**
      * @group unit
      */
-    public function testInitCallsInitDosAttackPrevention()
+    public function testInitCallsInitDosAttackPrevention(): void
     {
-        $plugin = $this->getMockBuilder(Plugin::class)
-            ->setMethods(['initDosAttackPrevention'])
-            ->disableOriginalConstructor()
-            ->getMock();
+        $plugin = $this->getAccessibleMock(
+            Plugin::class,
+            ['initDosAttackPrevention', 'processStdWraps'],
+            [],
+            '',
+            false
+        );
+        $plugin->expects(self::once())
+            ->method('processStdWraps')
+            ->willReturn(['customScriptPath' => '']);
         $plugin->expects(self::once())
             ->method('initDosAttackPrevention');
 
-        $this->callInaccessibleMethod($plugin, 'init', []);
+        $plugin->_call('init', [], $this->request);
     }
 
     /**
      * @group unit
      */
-    public function testInitDosAttackPreventionIfNotConfigured()
+    public function testInitDosAttackPreventionIfNotConfigured(): void
     {
-        $plugin = $this->getAccessibleMock(Plugin::class, ['dummy'], [], '', false);
-        $plugin->_set('paramName', 'urls');
-        $plugin->conf = [''];
-        $plugin->piVars = [
-            'urls' => [
-                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl',
-            ],
-        ];
+        $plugin = $this->getAccessibleMock(Plugin::class, ['main'], [], '', false);
+        $plugin->_set(
+            'requestParameters',
+            [
+                'urls' => [
+                    0 => 'firstUrl',
+                    1 => 'secondUrl',
+                    2 => 'thirdUrl',
+                    3 => 'fourthUrl',
+                    4 => 'fifthUrl',
+                ],
+            ]
+        );
+        $plugin->_set('conf', []);
 
-        $this->callInaccessibleMethod($plugin, 'initDosAttackPrevention');
+        $plugin->_call('initDosAttackPrevention');
 
         self::assertEquals(
             ['urls' => [0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl']],
-            $plugin->piVars
+            $plugin->_get('requestParameters')
         );
     }
 
     /**
      * @group unit
      */
-    public function testInitDosAttackPreventionIfConfigured()
+    public function testInitDosAttackPreventionIfConfigured(): void
     {
-        $plugin = $this->getAccessibleMock(Plugin::class, ['dummy'], [], '', false);
-        $plugin->_set('paramName', 'urls');
-        $plugin->conf = ['numberOfUrlsAllowedToProcess' => 3];
-        $plugin->piVars = [
-            'urls' => [
-                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl', 3 => 'fourthUrl', 4 => 'fifthUrl',
-            ],
-        ];
+        $plugin = $this->getAccessibleMock(Plugin::class, ['main'], [], '', false);
+        $plugin->_set('requestParameterName', 'urls');
+        $plugin->_set(
+            'requestParameters',
+            [
+                'urls' => [
+                    0 => 'firstUrl',
+                    1 => 'secondUrl',
+                    2 => 'thirdUrl',
+                    3 => 'fourthUrl',
+                    4 => 'fifthUrl',
+                ],
+            ]
+        );
+        $plugin->_set('conf', ['numberOfUrlsAllowedToProcess' => 3]);
 
-        $this->callInaccessibleMethod($plugin, 'initDosAttackPrevention');
+        $plugin->_call('initDosAttackPrevention');
 
-        self::assertEquals(['urls' => [0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl']], $plugin->piVars);
+        self::assertEquals(
+            ['urls' => [0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl']],
+            $plugin->_get('requestParameters')
+        );
     }
 
     /**
      * @group unit
      */
-    public function testBuildScriptOptionsAddsCookies()
+    public function testBuildScriptOptionsAddsCookies(): void
     {
         $_COOKIE['test1'] = 'value1';
         $_COOKIE['test2'] = 'value2';
 
-        $plugin = $this->getAccessibleMock(Plugin::class, ['dummy'], [], '', false);
-        $this->callInaccessibleMethod($plugin, 'buildScriptOptions');
+        $plugin = $this->getAccessibleMock(Plugin::class, ['main'], [], '', false);
+        $plugin->_call('buildScriptOptions');
 
         self::assertStringContainsString(
             ' --cookie \'test1\' \'value1\' --cookie \'test2\' \'value2\'',
-            $this->callInaccessibleMethod($plugin, 'buildScriptOptions')
+            $plugin->_call('buildScriptOptions')
         );
     }
 
     /**
      * @group unit
      */
-    public function testGetUrlsPrefersPiVarsOverTypoScriptConfiguration()
+    public function testGetUrlsPrefersRequestParametersOverTypoScriptConfiguration(): void
     {
-        $plugin = $this->getAccessibleMock(Plugin::class, ['dummy'], [], '', false);
-        $plugin->_set('paramName', 'urls');
-        $plugin->piVars = [
-            'urls' => [
-                0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl',
-            ],
-        ];
-        $plugin->conf = [
-            'urls.' => ['fourthUrl', 'fifthUrl'],
-        ];
+        $plugin = $this->getAccessibleMock(Plugin::class, ['main'], [], '', false);
+        $plugin->_set('requestParameterName', 'urls');
+        $plugin->_set('requestParameters', ['urls' => [0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl']]);
+        $plugin->_set('conf', ['urls.' => ['fourthUrl', 'fifthUrl']]);
 
         self::assertEquals(
             [0 => 'firstUrl', 1 => 'secondUrl', 2 => 'thirdUrl'],
-            $this->callInaccessibleMethod($plugin, 'getUrls')
+            $plugin->_call('getUrls')
         );
     }
 
     /**
      * @group unit
      */
-    public function testGetUrlsWithUrlsFromTypoScriptWhenConfigurationIsArray()
+    public function testGetUrlsWithUrlsFromTypoScriptWhenConfigurationIsArray(): void
     {
-        $plugin = $this->getAccessibleMock(Plugin::class, ['dummy'], [], '', false);
-        $plugin->conf = [
-            'urls.' => ['firstUrl', 'secondUrl', 'thirdUrl'],
-        ];
+        $plugin = $this->getAccessibleMock(Plugin::class, ['main'], [], '', false);
+        $plugin->_set('conf', ['urls.' => ['firstUrl', 'secondUrl', 'thirdUrl']]);
 
-        self::assertEquals(
-            ['firstUrl', 'secondUrl', 'thirdUrl'],
-            $this->callInaccessibleMethod($plugin, 'getUrls')
-        );
+        self::assertEquals(['firstUrl', 'secondUrl', 'thirdUrl'], $plugin->_call('getUrls'));
     }
 
     /**
      * @group unit
      */
-    public function testGetUrlsWithUrlsFromTypoScriptWhenConfigurationIsString()
+    public function testGetUrlsWithUrlsFromTypoScriptWhenConfigurationIsString(): void
     {
-        $plugin = $this->getAccessibleMock(Plugin::class, ['dummy'], [], '', false);
-        $plugin->conf = ['urls' => 'firstUrl'];
+        $plugin = $this->getAccessibleMock(Plugin::class, ['main'], [], '', false);
+        $plugin->_set('conf', ['urls' => 'firstUrl']);
 
-        self::assertEquals(
-            ['firstUrl'],
-            $this->callInaccessibleMethod($plugin, 'getUrls')
-        );
+        self::assertEquals(['firstUrl'], $plugin->_call('getUrls'));
     }
 
     /**
@@ -222,45 +256,54 @@ class PluginTest extends UnitTestCase
      *
      * @dataProvider dataProviderSanitizeUrls
      */
+    #[DataProvider('dataProviderSanitizeUrls')]
     public function testSanitizeUrlsWithoutFrontendUser(
         $allowedHostsConfiguration,
-        $expectedAllowedHostsForUtilityMethod
-    ) {
+        $expectedAllowedHostsForUtilityMethod,
+    ): void {
         $utility = $this->getMockBuilder(Utility::class)
-            ->setMethods(['sanitizeUrl'])
+            ->onlyMethods(['sanitizeUrl'])
             ->getMock();
 
-        $utility->expects(self::exactly(2))
+        $matcher = self::exactly(2);
+        $utility->expects($matcher)
             ->method('sanitizeUrl')
-            ->withConsecutive(
-                ['firstUrl', $expectedAllowedHostsForUtilityMethod],
-                ['secondUrl', $expectedAllowedHostsForUtilityMethod],
+            ->with(
+                $this->callback(function (string $url) use ($matcher): bool {
+                    self::assertSame(
+                        match ($matcher->numberOfInvocations()) {
+                            1 => 'firstUrl',
+                            2 => 'secondUrl',
+                        },
+                        $url
+                    );
+
+                    return true;
+                }),
+                $expectedAllowedHostsForUtilityMethod
             )
             ->willReturnOnConsecutiveCalls(
-                self::returnValue('firstUrlSanitized'),
-                self::returnValue('secondUrlSanitized')
+                'firstUrlSanitized',
+                'secondUrlSanitized'
             );
 
-        $plugin = $this->getMockBuilder(Plugin::class)
-            ->setMethods(['getUtility'])
-            ->disableOriginalConstructor()
-            ->getMock();
+        $plugin = $this->getAccessibleMock(Plugin::class, ['getUtility'], [], '', false);
 
         $plugin->expects(self::once())
             ->method('getUtility')
-            ->will(self::returnValue($utility));
-        $plugin->conf['allowedHosts'] = $allowedHostsConfiguration;
+           ->willReturn($utility);
+        $plugin->_set('conf', ['allowedHosts' => $allowedHostsConfiguration]);
 
         self::assertEquals(
             ['firstUrlSanitized', 'secondUrlSanitized'],
-            $this->callInaccessibleMethod($plugin, 'sanitizeUrls', ['firstUrl', 'secondUrl'])
+            $plugin->_call('sanitizeUrls', ['firstUrl', 'secondUrl'])
         );
     }
 
     /**
      * @return string[][]|bool[][]|string[][][]
      */
-    public function dataProviderSanitizeUrls()
+    public static function dataProviderSanitizeUrls(): array
     {
         return [
             ['example.com, example.org', ['example.com', 'example.org']],
@@ -271,7 +314,7 @@ class PluginTest extends UnitTestCase
     /**
      * @group unit
      */
-    public function testGeneratePdfIfNotCreatedSuccessfully()
+    public function testGeneratePdfIfNotCreatedSuccessfully(): void
     {
         $plugin = $this->getAccessibleMock(Plugin::class, ['buildScriptOptions', 'pdfExists', 'callExec'], [], '', false);
 
@@ -280,14 +323,14 @@ class PluginTest extends UnitTestCase
 
         $plugin->expects(self::once())
             ->method('buildScriptOptions')
-            ->will(self::returnValue('--someArgs test'));
+           ->willReturn('--someArgs test');
 
         $plugin->expects(self::once())
             ->method('pdfExists')
-            ->will(self::returnValue(false));
+           ->willReturn(false);
 
-        $cacheManager = $this->getMockBuilder(\stdClass::class)
-            ->setMethods(['store'])
+        $cacheManager = $this->getMockBuilder(Cache::class)
+            ->onlyMethods(['store'])
             ->getMock();
         $cacheManager->expects(self::never())
             ->method('store');
@@ -296,7 +339,7 @@ class PluginTest extends UnitTestCase
         $plugin->_set('scriptPath', '/some/path/');
         $plugin->_set('filename', '/some/otherpath/file.pdf');
 
-        $this->callInaccessibleMethod($plugin, 'generatePdf', ['first', 'second'], 'first, second');
+        $plugin->_call('generatePdf', ['first', 'second'], 'first, second');
 
         self::assertEquals(
             '/some/path/wkhtmltopdf --someArgs test first second \'/some/otherpath/file.pdf\' 2>&1',
@@ -307,7 +350,7 @@ class PluginTest extends UnitTestCase
     /**
      * @group unit
      */
-    public function testGeneratePdfIfCreatedSuccessfully()
+    public function testGeneratePdfIfCreatedSuccessfully(): void
     {
         $plugin = $this->getAccessibleMock(Plugin::class, ['buildScriptOptions', 'pdfExists', 'callExec'], [], '', false);
 
@@ -316,14 +359,14 @@ class PluginTest extends UnitTestCase
 
         $plugin->expects(self::once())
             ->method('buildScriptOptions')
-            ->will(self::returnValue('--someArgs test'));
+           ->willReturn('--someArgs test');
 
         $plugin->expects(self::once())
             ->method('pdfExists')
-            ->will(self::returnValue(true));
+           ->willReturn(true);
 
-        $cacheManager = $this->getMockBuilder(\stdClass::class)
-            ->setMethods(['store'])
+        $cacheManager = $this->getMockBuilder(Cache::class)
+            ->onlyMethods(['store'])
             ->getMock();
         $cacheManager->expects(self::once())
             ->method('store')
@@ -333,7 +376,7 @@ class PluginTest extends UnitTestCase
         $plugin->_set('scriptPath', '/some/path/');
         $plugin->_set('filename', '/some/otherpath/file.pdf');
 
-        $this->callInaccessibleMethod($plugin, 'generatePdf', ['first', 'second'], 'first, second');
+        $plugin->_call('generatePdf', ['first', 'second'], 'first, second');
 
         self::assertEquals(
             '/some/path/wkhtmltopdf --someArgs test first second \'/some/otherpath/file.pdf\' 2>&1',
@@ -344,22 +387,22 @@ class PluginTest extends UnitTestCase
     /**
      * @group unit
      */
-    public function testCallExec()
+    public function testCallExec(): void
     {
         $plugin = $this->getAccessibleMock(Plugin::class, ['buildScriptOptions'], [], '', false);
         $plugin->_set('scriptCall', 'echo "DMK PDF test"');
 
-        $this->callInaccessibleMethod($plugin, 'callExec');
+        $plugin->_call('callExec');
         self::assertEquals(['DMK PDF test'], $plugin->_get('scriptCallOutput'));
     }
 
     /**
      * @group unit
      */
-    public function testPdfExists()
+    public function testPdfExists(): void
     {
         file_put_contents($this->filename, 'test');
-        $plugin = $this->getAccessibleMock(Plugin::class, ['dummy'], [], '', false);
+        $plugin = $this->getAccessibleMock(Plugin::class, ['main'], [], '', false);
         $plugin->_set('filename', $this->filename);
         self::assertTrue($plugin->_call('pdfExists'), 'Datei nicht vorhanden');
     }
@@ -367,7 +410,7 @@ class PluginTest extends UnitTestCase
     /**
      * @group unit
      */
-    public function testMainWhenNoUrlsGiven()
+    public function testMainWhenNoUrlsGiven(): void
     {
         $plugin = $this->getAccessibleMock(
             Plugin::class,
@@ -378,7 +421,6 @@ class PluginTest extends UnitTestCase
                 'pdfExists',
                 'offerPdfForDownload',
                 'handlePdfExistsNot',
-                'pi_wrapInBaseClass',
                 'init',
             ],
             [],
@@ -391,7 +433,7 @@ class PluginTest extends UnitTestCase
             ->with(['someConfiguration']);
         $plugin->expects(self::once())
             ->method('getUrls')
-            ->will(self::returnValue([]));
+           ->willReturn([]);
         $plugin->expects(self::never())
             ->method('sanitizeUrls');
         $plugin->expects(self::never())
@@ -402,18 +444,14 @@ class PluginTest extends UnitTestCase
             ->method('offerPdfForDownload');
         $plugin->expects(self::never())
             ->method('handlePdfExistsNot');
-        $plugin->expects(self::once())
-            ->method('pi_wrapInBaseClass')
-            ->with('')
-            ->will(self::returnValue('tested'));
 
-        self::assertSame('tested', $this->callInaccessibleMethod($plugin, 'main', 'Test', ['someConfiguration']));
+        self::assertSame('', $plugin->_call('main', 'Test', ['someConfiguration'], $this->request));
     }
 
     /**
      * @group unit
      */
-    public function testMainWhenUrlsGivenAndFileOnlyConfigured()
+    public function testMainWhenUrlsGivenAndFileOnlyConfigured(): void
     {
         $plugin = $this->getAccessibleMock(
             Plugin::class,
@@ -424,7 +462,6 @@ class PluginTest extends UnitTestCase
                 'pdfExists',
                 'offerPdfForDownload',
                 'handlePdfExistsNot',
-                'pi_wrapInBaseClass',
                 'init',
             ],
             [],
@@ -440,20 +477,20 @@ class PluginTest extends UnitTestCase
             ->with(['someConfiguration']);
         $plugin->expects(self::once())
             ->method('getUrls')
-            ->will(self::returnValue([
-                0 => 'first',
-                1 => 'second',
-            ]));
+           ->willReturn([
+               0 => 'first',
+               1 => 'second',
+           ]);
         $plugin->expects(self::once())
             ->method('sanitizeUrls')
             ->with([
                 0 => 'first',
                 1 => 'second',
             ])
-            ->will(self::returnValue([
-                0 => 'firstSanitized',
-                1 => 'secondSanitized',
-            ]));
+           ->willReturn([
+               0 => 'firstSanitized',
+               1 => 'secondSanitized',
+           ]);
         $plugin->expects(self::once())
             ->method('initializeFileNameToOfferAsDownload')
             ->with([
@@ -466,16 +503,14 @@ class PluginTest extends UnitTestCase
             ->method('offerPdfForDownload');
         $plugin->expects(self::never())
             ->method('handlePdfExistsNot');
-        $plugin->expects(self::never())
-            ->method('pi_wrapInBaseClass');
 
-        self::assertSame('fileOnly', $this->callInaccessibleMethod($plugin, 'main', 'Test', ['someConfiguration']));
+        self::assertSame('fileOnly', $plugin->_call('main', 'Test', ['someConfiguration'], $this->request));
     }
 
     /**
      * @group unit
      */
-    public function testMainWhenUrlsGivenAndPdfNotCreated()
+    public function testMainWhenUrlsGivenAndPdfNotCreated(): void
     {
         $plugin = $this->getAccessibleMock(
             Plugin::class,
@@ -486,7 +521,6 @@ class PluginTest extends UnitTestCase
                 'pdfExists',
                 'offerPdfForDownload',
                 'handlePdfExistsNot',
-                'pi_wrapInBaseClass',
                 'init',
             ],
             [],
@@ -501,20 +535,20 @@ class PluginTest extends UnitTestCase
             ->with(['someConfiguration']);
         $plugin->expects(self::once())
             ->method('getUrls')
-            ->will(self::returnValue([
-                0 => 'first',
-                1 => 'second',
-            ]));
+           ->willReturn([
+               0 => 'first',
+               1 => 'second',
+           ]);
         $plugin->expects(self::once())
             ->method('sanitizeUrls')
             ->with([
                 0 => 'first',
                 1 => 'second',
             ])
-            ->will(self::returnValue([
-                0 => 'firstSanitized',
-                1 => 'secondSanitized',
-            ]));
+           ->willReturn([
+               0 => 'firstSanitized',
+               1 => 'secondSanitized',
+           ]);
         $plugin->expects(self::once())
             ->method('initializeFileNameToOfferAsDownload')
             ->with([
@@ -523,23 +557,19 @@ class PluginTest extends UnitTestCase
             ]);
         $plugin->expects(self::once())
             ->method('pdfExists')
-            ->will(self::returnValue(false));
+           ->willReturn(false);
         $plugin->expects(self::never())
             ->method('offerPdfForDownload');
         $plugin->expects(self::once())
             ->method('handlePdfExistsNot');
-        $plugin->expects(self::once())
-            ->method('pi_wrapInBaseClass')
-            ->with('')
-            ->will(self::returnValue('tested'));
 
-        self::assertSame('tested', $this->callInaccessibleMethod($plugin, 'main', 'Test', ['someConfiguration']));
+        self::assertSame('', $plugin->_call('main', 'Test', ['someConfiguration'], $this->request));
     }
 
     /**
      * @group unit
      */
-    public function testMainWhenUrlsGivenAndPdfCreated()
+    public function testMainWhenUrlsGivenAndPdfCreated(): void
     {
         $plugin = $this->getAccessibleMock(
             Plugin::class,
@@ -550,7 +580,6 @@ class PluginTest extends UnitTestCase
                 'pdfExists',
                 'offerPdfForDownload',
                 'handlePdfExistsNot',
-                'pi_wrapInBaseClass',
                 'init',
             ],
             [],
@@ -565,20 +594,20 @@ class PluginTest extends UnitTestCase
             ->with(['someConfiguration']);
         $plugin->expects(self::once())
             ->method('getUrls')
-            ->will(self::returnValue([
+            ->willReturn([
                 0 => 'first',
                 1 => 'second',
-            ]));
+            ]);
         $plugin->expects(self::once())
             ->method('sanitizeUrls')
             ->with([
                 0 => 'first',
                 1 => 'second',
             ])
-            ->will(self::returnValue([
-                0 => 'firstSanitized',
-                1 => 'secondSanitized',
-            ]));
+           ->willReturn([
+               0 => 'firstSanitized',
+               1 => 'secondSanitized',
+           ]);
         $plugin->expects(self::once())
             ->method('initializeFileNameToOfferAsDownload')
             ->with([
@@ -587,16 +616,12 @@ class PluginTest extends UnitTestCase
             ]);
         $plugin->expects(self::once())
             ->method('pdfExists')
-            ->will(self::returnValue(true));
+           ->willReturn(true);
         $plugin->expects(self::once())
             ->method('offerPdfForDownload');
-        $plugin->expects(self::never())
-            ->method('handlePdfExistsNot');
         $plugin->expects(self::once())
-            ->method('pi_wrapInBaseClass')
-            ->with('')
-            ->will(self::returnValue('tested'));
+            ->method('handlePdfExistsNot');
 
-        self::assertSame('tested', $this->callInaccessibleMethod($plugin, 'main', 'Test', ['someConfiguration']));
+        self::assertSame('', $plugin->_call('main', 'Test', ['someConfiguration'], $this->request));
     }
 }
