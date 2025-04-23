@@ -1,4 +1,4 @@
-name: "PHP Checks"
+name: "Quality Checks"
 
 on:
     push:
@@ -12,7 +12,7 @@ env:
 jobs:
 
     php-lint:
-        name: "PHP Lint"
+        name: "Linting"
 
         runs-on: "ubuntu-latest"
 
