@@ -53,7 +53,7 @@ class Plugin extends AbstractPlugin
     public $extKey = 'webkitpdf';
 
     /**
-     * @var \DMK\Webkitpdf\Cache
+     * @var Cache
      */
     protected $cacheManager;
 
