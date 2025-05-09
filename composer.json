@@ -69,12 +69,17 @@
             ".Build/bin/parallel-lint ./*",
             "[ ! -e ../../autoload.php.bak ] || mv ../../autoload.php.bak ../../autoload.php"
         ],
+        "lint:yaml": [
+            "[ -e .Build/bin/yaml-lint ] || composer update",
+            ".Build/bin/yaml-lint --ansi -n -v ./Configuration ./Resources ./.github typoscript-lint.yml"
+        ],
         "lint:typoscript": [
             "[ -e .Build/bin/typoscript-lint ] || composer update",
             ".Build/bin/typoscript-lint --ansi -v --fail-on-warnings"
         ],
         "lint": [
             "@lint:php",
+            "@lint:yaml",
             "@lint:typoscript"
         ],
         "test:phpcs": [
