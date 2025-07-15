@@ -29,8 +29,8 @@ declare(strict_types=1);
 
 namespace DMK\Webkitpdf\Updates;
 
+use Linawolf\ListTypeMigration\Upgrades\AbstractListTypeToCTypeUpdate;
 use TYPO3\CMS\Install\Attribute\UpgradeWizard;
-use TYPO3\CMS\Install\Updates\AbstractListTypeToCTypeUpdate;
 
 #[UpgradeWizard('dmkWebkitpdfCTypeMigration')]
 final class DMKWebkitpdfCTypeMigration extends AbstractListTypeToCTypeUpdate
