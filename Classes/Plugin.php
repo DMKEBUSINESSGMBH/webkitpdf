@@ -389,8 +389,8 @@ class Plugin
 
         $finalSettings = [];
         foreach ($tsSettings as $param => $value) {
-            $value = trim($value);
-            if (!str_starts_with($param, '--')) {
+            $value = trim((string) $value);
+            if (!str_starts_with((string) $param, '--')) {
                 $param = '--'.$param;
             }
 
@@ -424,15 +424,15 @@ class Plugin
 
         $paramsString = '';
         foreach ($options as $param => $value) {
-            if (strlen($value) > 0) {
-                $value = escapeshellarg($value);
+            if (strlen((string) $value) > 0) {
+                $value = escapeshellarg((string) $value);
             }
 
             $paramsString .= ' '.$param.' '.$value;
         }
 
         foreach ($_COOKIE as $cookieName => $cookieValue) {
-            $paramsString .= ' --cookie '.escapeshellarg($cookieName).' '.escapeshellarg($cookieValue);
+            $paramsString .= ' --cookie '.escapeshellarg($cookieName).' '.escapeshellarg((string) $cookieValue);
         }
 
         return $paramsString;
