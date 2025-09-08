@@ -432,7 +432,7 @@ class Plugin
         }
 
         foreach ($_COOKIE as $cookieName => $cookieValue) {
-            $paramsString .= ' --cookie '.escapeshellarg($cookieName).' '.escapeshellarg((string) $cookieValue);
+            $paramsString .= ' --cookie '.escapeshellarg((string) $cookieName).' '.escapeshellarg((string) $cookieValue);
         }
 
         return $paramsString;
@@ -460,20 +460,20 @@ class Plugin
     {
         // Get TS values and process stdWrap properties
         foreach ($tsSettings as $key => $value) {
-            if (str_ends_with($key, '.')) {
-                $key = substr($key, 0, -1);
+            if (str_ends_with((string) $key, '.')) {
+                $key = substr((string) $key, 0, -1);
             }
 
             if (
                 (
-                    str_ends_with($key, '.')
-                    && !array_key_exists(substr($key, 0, -1), $tsSettings)
+                    str_ends_with((string) $key, '.')
+                    && !array_key_exists(substr((string) $key, 0, -1), $tsSettings)
                 )
                 || (
-                    !str_ends_with($key, '.')
+                    !str_ends_with((string) $key, '.')
                     && array_key_exists($key.'.', $tsSettings)
                 )
-                && !str_contains($key, 'scriptParams')
+                && !str_contains((string) $key, 'scriptParams')
             ) {
                 $tsSettings[$key] = $this->contentObjectRenderer->stdWrap($value, $tsSettings[$key.'.']);
 
