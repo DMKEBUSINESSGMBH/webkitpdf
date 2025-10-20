@@ -249,7 +249,6 @@ class PluginTest extends UnitTestCase
     }
 
     /**
-     * @param string $allowedHostsConfiguration
      * @param array || boolean $expectedAllowedHostsForUtilityMethod
      *
      * @group unit
@@ -258,8 +257,8 @@ class PluginTest extends UnitTestCase
      */
     #[DataProvider('dataProviderSanitizeUrls')]
     public function testSanitizeUrlsWithoutFrontendUser(
-        $allowedHostsConfiguration,
-        $expectedAllowedHostsForUtilityMethod,
+        string $allowedHostsConfiguration,
+        array $expectedAllowedHostsForUtilityMethod,
     ): void {
         $utility = $this->getMockBuilder(Utility::class)
             ->onlyMethods(['sanitizeUrl'])

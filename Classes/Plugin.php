@@ -424,7 +424,7 @@ class Plugin
 
         $paramsString = '';
         foreach ($options as $param => $value) {
-            if (strlen((string) $value) > 0) {
+            if ('' !== (string) $value) {
                 $value = escapeshellarg((string) $value);
             }
 
