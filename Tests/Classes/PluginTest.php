@@ -205,7 +205,7 @@ class PluginTest extends UnitTestCase
         $plugin->_call('buildScriptOptions');
 
         self::assertStringContainsString(
-            ' --cookie \'test1\' \'value1\' --cookie \'test2\' \'value2\'',
+            " --cookie 'test1' 'value1' --cookie 'test2' 'value2'",
             $plugin->_call('buildScriptOptions')
         );
     }
@@ -341,7 +341,7 @@ class PluginTest extends UnitTestCase
         $plugin->_call('generatePdf', ['first', 'second'], 'first, second');
 
         self::assertEquals(
-            '/some/path/wkhtmltopdf --someArgs test first second \'/some/otherpath/file.pdf\' 2>&1',
+            "/some/path/wkhtmltopdf --someArgs test first second '/some/otherpath/file.pdf' 2>&1",
             $plugin->_get('scriptCall')
         );
     }
@@ -378,7 +378,7 @@ class PluginTest extends UnitTestCase
         $plugin->_call('generatePdf', ['first', 'second'], 'first, second');
 
         self::assertEquals(
-            '/some/path/wkhtmltopdf --someArgs test first second \'/some/otherpath/file.pdf\' 2>&1',
+            "/some/path/wkhtmltopdf --someArgs test first second '/some/otherpath/file.pdf' 2>&1",
             $plugin->_get('scriptCall')
         );
     }
