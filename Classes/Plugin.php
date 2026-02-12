@@ -256,7 +256,7 @@ class Plugin
     {
         return $this->requestParameters[$this->requestParameterName]
             ?? $this->conf['urls.']
-            ?? ($this->conf['urls'] ? [$this->conf['urls']] : []);
+            ?? (($this->conf['urls'] ?? []) ? [$this->conf['urls']] : []);
     }
 
     protected function sanitizeUrls(array $urls): array
